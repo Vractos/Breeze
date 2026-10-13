@@ -5,6 +5,7 @@ import Foundation
 final class FakeLoginItemService: LoginItemService {
     var status: LoginItemStatus
     var registerError: (any Error)?
+    var unregisterError: (any Error)?
     /// Status after a successful `register()`; `.requiresApproval` simulates the first time.
     var statusAfterRegister: LoginItemStatus = .enabled
     private(set) var registerCount = 0
@@ -23,6 +24,7 @@ final class FakeLoginItemService: LoginItemService {
 
     func unregister() throws {
         unregisterCount += 1
+        if let unregisterError { throw unregisterError }
         status = .notRegistered
     }
 

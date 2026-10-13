@@ -21,7 +21,11 @@ struct PreviewEnvironment {
             settings: settings,
             clock: SystemStoreClock()
         )
-        self.loginItem = LoginItem(service: PreviewLoginItemService())
+        self.loginItem = LoginItem(
+            service: PreviewLoginItemService(),
+            defaults: defaults,
+            appURL: Bundle.main.bundleURL
+        )
     }
 }
 #endif

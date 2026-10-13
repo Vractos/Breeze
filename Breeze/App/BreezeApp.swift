@@ -1,8 +1,11 @@
 import SwiftUI
 import ThinQKit
+import os
 
 @main
 struct BreezeApp: App {
+    private static let logger = Logger(subsystem: "com.vinicius.Breeze", category: "app")
+
     @State private var settings: AppSettings
     @State private var store: ACStore
     @State private var loginItem: LoginItem
@@ -17,13 +20,23 @@ struct BreezeApp: App {
         )
         _settings = State(initialValue: settings)
         _store = State(initialValue: store)
-        _loginItem = State(initialValue: LoginItem(service: MainAppLoginItemService()))
+        let loginItem = LoginItem(
+            service: MainAppLoginItemService(),
+            defaults: .standard,
+            appURL: Bundle.main.bundleURL
+        )
+        _loginItem = State(initialValue: loginItem)
 
         // Start at launch, not when the panel first opens: MenuBarExtra builds its window
         // content lazily, so a `.task` on PanelView would leave the menu bar label empty and
         // polling off until the first click. `start()` is idempotent.
         if LaunchEnvironment.isInteractiveLaunch {
             Task { await store.start() }
+            do throws(LoginItemError) {
+                try loginItem.claimRegistrationIfInstalled()
+            } catch {
+                Self.logger.error("Login item move to the installed copy failed: \(String(describing: error), privacy: .public)")
+            }
         }
     }
 

@@ -1,0 +1,14 @@
+# Xcode
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+DerivedData/
+build/
+.build/
+.swiftpm/xcode/
+*.xcworkspace/xcshareddata/swiftpm/Package.resolved.bak
+# macOS
+.DS_Store
+# Secrets — never commit a ThinQ token
+*.pat
+.env

@@ -20,6 +20,10 @@ struct CLIRunner {
             try await showState(deviceID: deviceID, raw: raw)
         case .set(let deviceID, let command):
             try await set(deviceID: deviceID, command: command)
+        case .setRaw(let deviceID, let body):
+            try await setRaw(deviceID: deviceID, body: body)
+        case .energy(let deviceID):
+            try await showEnergy(deviceID: deviceID)
         case .watch(let deviceID, let everySeconds):
             try await watch(deviceID: deviceID, everySeconds: everySeconds)
         }
@@ -96,6 +100,59 @@ struct CLIRunner {
             CLIOutput.line("Already in that state (\(error.apiCode?.description ?? "")); nothing to do.")
         } catch {
             throw .api(error)
+        }
+    }
+
+    /// No capability checks and no redundancy handling: the point is to see what LG answers.
+    private func setRaw(deviceID: String, body: JSONObject) async throws(CLIFailure) {
+        CLIOutput.note("POST devices/…/control \(JSONValue.object(body).compactDescription)")
+        try await call { () async throws(ThinQError) in try await client.control(deviceID: deviceID, body: body) }
+        CLIOutput.line("OK")
+    }
+
+    /// Prints each raw payload, then what ThinQKit parses from it, so a probe shows both the
+    /// response shape and whether the parser agrees. A non-`0000` `resultCode` is an answer
+    /// ("not supported"), not a failure. An HTTP error on the profile ends the run; on one usage
+    /// range it is printed and the next range still runs (except a bad token or 1306).
+    private func showEnergy(deviceID: String) async throws(CLIFailure) {
+        let profile = try await call { () async throws(ThinQError) in try await client.energyProfileJSON(deviceID: deviceID) }
+        CLIOutput.line("Energy profile (raw)")
+        CLIOutput.line(try CLIOutput.json(profile ?? .null))
+        var property = "energyUsage"
+        do {
+            let properties = try EnergyResponse.properties(json: profile)
+            CLIOutput.line("Properties: \(properties.isEmpty ? "none" : properties.joined(separator: ", "))")
+            property = properties.first ?? property
+        } catch {
+            CLIOutput.line("Energy profile not usable: \(error)")
+        }
+
+        let calendar = Calendar(identifier: .gregorian)
+        let now = Date.now
+        let today = calendar.dateComponents([.year, .month, .day], from: now)
+        let weekAgo = calendar.dateComponents([.year, .month, .day], from: calendar.date(byAdding: .day, value: -6, to: now) ?? now)
+        for (title, period, from) in [("This month", EnergyPeriod.monthly, today), ("Last 7 days", EnergyPeriod.daily, weekAgo)] {
+            CLIOutput.line()
+            let usage: JSONValue?
+            do {
+                usage = try await client.energyUsageJSON(deviceID: deviceID, property: property, period: period, from: from, to: today)
+            } catch {
+                // The two ranges are independent probes: report this one and still try the next.
+                if error.isTokenInvalid || error.isRateLimited { throw .api(error) }
+                CLIOutput.line("\(title): \(period.rawValue) \(property) failed: \(CLIFailure.api(error))")
+                continue
+            }
+            CLIOutput.line("\(title): \(period.rawValue) \(property) (raw)")
+            CLIOutput.line(try CLIOutput.json(usage ?? .null))
+            do {
+                let entries = try EnergyResponse.entries(json: usage, property: property)
+                if entries.isEmpty { CLIOutput.line("Parsed: no entries") }
+                for entry in entries {
+                    CLIOutput.line("Parsed: \(Self.describe(entry.date))  \(entry.energy.value.formatted(.number.precision(.fractionLength(3)))) kWh")
+                }
+            } catch {
+                CLIOutput.line("Usage not usable: \(error)")
+            }
         }
     }
 
@@ -188,6 +245,11 @@ struct CLIRunner {
 
     private static func timestamp() -> String {
         Date.now.formatted(date: .omitted, time: .standard)
+    }
+
+    private static func describe(_ date: DateComponents) -> String {
+        let yearMonth = String(format: "%04d-%02d", date.year ?? 0, date.month ?? 0)
+        return date.day.map { yearMonth + String(format: "-%02d", $0) } ?? yearMonth
     }
 
     private static func shortType(_ type: String) -> String {

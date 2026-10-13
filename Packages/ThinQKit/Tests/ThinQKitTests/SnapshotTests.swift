@@ -11,10 +11,11 @@ struct SnapshotTests {
         #expect(snapshot == AirConditionerSnapshot(
             power: .off,
             mode: .fan,
-            fanSpeed: .high,
+            fan: .level(3),
             currentTemperature: Measurement(value: 27, unit: .celsius),
             targetTemperature: Measurement(value: 24.5, unit: .celsius),
-            powerSave: false
+            powerSave: false,
+            sleepTimer: .off
         ))
     }
 
@@ -24,7 +25,10 @@ struct SnapshotTests {
 
         #expect(snapshot.power == .on)
         #expect(snapshot.mode == .cool)
-        #expect(snapshot.fanSpeed == .nature)
+        #expect(snapshot.fan == .auto, "NATURE reads as Auto")
+        #expect(snapshot.verticalSwing == true)
+        #expect(snapshot.horizontalSwing == false)
+        #expect(snapshot.sleepTimer == nil)
         #expect(snapshot.currentTemperature == Measurement(value: 24, unit: .celsius))
         #expect(snapshot.targetTemperature == Measurement(value: 22.5, unit: .celsius))
         #expect(snapshot.powerSave == nil)
@@ -72,10 +76,11 @@ struct SnapshotTests {
         #expect(snapshot == AirConditionerSnapshot(
             power: .off,
             mode: .fan,
-            fanSpeed: .high,
+            fan: .level(3),
             currentTemperature: Measurement(value: 27, unit: .celsius),
             targetTemperature: Measurement(value: 24.5, unit: .celsius),
-            powerSave: false
+            powerSave: false,
+            sleepTimer: .off
         ))
     }
 

@@ -38,6 +38,35 @@ struct CLIBehaviourTests {
         #expect(CLIRunner.backoffInterval(after: maximum, everySeconds: maximum) == maximum)
     }
 
+    @Test func fanCapabilityNamesKeysAndRawLevels() {
+        let fan = FanCapability(
+            levelValues: ["LOW", "LOW_MID", "MID", "MID_HIGH", "HIGH"],
+            levelKey: "windStrengthDetail",
+            autoKey: "windStrength"
+        )
+        #expect(CLIOutput.describe(fan)
+            == "Auto, levels 1–5 [AUTO via airFlow.windStrength; levels via airFlow.windStrengthDetail: LOW, LOW_MID, MID, MID_HIGH, HIGH]")
+        #expect(CLIOutput.describe(FanCapability.unsupported) == "not writable")
+    }
+
+    @Test func snapshotLinesIncludeTheNewControls() {
+        let lines = CLIOutput.describe(AirConditionerSnapshot(
+            power: .on,
+            fan: .level(3),
+            verticalSwing: true,
+            displayLight: false,
+            sleepTimer: .off
+        ))
+        #expect(lines.contains("Fan:     level 3"))
+        #expect(lines.contains("Swing:   vertical on, horizontal —"))
+        #expect(lines.contains("Light:   off"))
+        #expect(lines.contains("Sleep:   off"))
+        #expect(CLIOutput.describe(AirConditionerSnapshot(power: .off, fan: .auto)).contains("Fan:     Auto"))
+        #expect(CLIOutput.sleepTimer(nil) == "—")
+        #expect(CLIOutput.sleepTimer(.set(remaining: nil)) == "on")
+        #expect(CLIOutput.sleepTimer(.set(remaining: .seconds(56 * 60))).hasSuffix(" left"))
+    }
+
     @Test func powerOffErrorOnOtherCommandsTellsTheUserToTurnItOn() {
         let failure = CLIFailure.api(.api(code: .commandNotSupportedInPowerOff, message: ""))
         #expect(failure.description.contains("thinq set <deviceId> power on"))

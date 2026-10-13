@@ -4,38 +4,45 @@ public struct AirConditionerCapabilities: Sendable, Equatable {
     public var powerOptions: [ACPower]
     /// Writable modes, in profile order.
     public var modes: [ACMode]
-    /// Writable fan speeds, in profile order.
-    public var fanSpeeds: [ACFanSpeed]
-    /// `"windStrengthDetail"` when the profile has it, else `"windStrength"`.
-    public var fanSpeedKey: String
+    public var fan: FanCapability
     public var temperature: TemperatureCapability
     public var hasPowerSave: Bool
+    /// `windDirection.rotateUpDown` is writable (swing on/off; the API has no vane angles).
     public var hasVerticalSwing: Bool
+    /// `windDirection.rotateLeftRight` is writable.
     public var hasHorizontalSwing: Bool
+    /// `display.light` is writable with both ON and OFF (models with `LEVEL_n` values get no toggle).
+    public var hasDisplayLight: Bool
+    /// `sleepTimer.relativeHourToStop` is writable.
+    public var hasSleepTimer: Bool
 
     static let powerProperty = (resource: "operation", key: "airConOperationMode")
     static let modeProperty = (resource: "airConJobMode", key: "currentJobMode")
-    static let fanResource = "airFlow"
     static let powerSaveProperty = (resource: "powerSave", key: "powerSaveEnabled")
+    static let verticalSwingProperty = (resource: "windDirection", key: "rotateUpDown")
+    static let horizontalSwingProperty = (resource: "windDirection", key: "rotateLeftRight")
+    static let displayLightProperty = (resource: "display", key: "light")
 
     public init(
         powerOptions: [ACPower],
         modes: [ACMode],
-        fanSpeeds: [ACFanSpeed],
-        fanSpeedKey: String,
+        fan: FanCapability,
         temperature: TemperatureCapability,
         hasPowerSave: Bool,
         hasVerticalSwing: Bool,
-        hasHorizontalSwing: Bool
+        hasHorizontalSwing: Bool,
+        hasDisplayLight: Bool,
+        hasSleepTimer: Bool
     ) {
         self.powerOptions = powerOptions
         self.modes = modes
-        self.fanSpeeds = fanSpeeds
-        self.fanSpeedKey = fanSpeedKey
+        self.fan = fan
         self.temperature = temperature
         self.hasPowerSave = hasPowerSave
         self.hasVerticalSwing = hasVerticalSwing
         self.hasHorizontalSwing = hasHorizontalSwing
+        self.hasDisplayLight = hasDisplayLight
+        self.hasSleepTimer = hasSleepTimer
     }
 
     /// Throws `.missingProperty` when the profile has no `operation.airConOperationMode` or
@@ -47,20 +54,22 @@ public struct AirConditionerCapabilities: Sendable, Equatable {
         guard let mode = profile[Self.modeProperty.resource, Self.modeProperty.key] else {
             throw .missingProperty("\(Self.modeProperty.resource).\(Self.modeProperty.key)")
         }
-
-        // Prefer the detailed key when present, like the official SDK does.
-        let airFlow = profile.resources[Self.fanResource] ?? [:]
-        let fanSpeedKey = airFlow["windStrengthDetail"] != nil ? "windStrengthDetail" : "windStrength"
+        let light = profile[Self.displayLightProperty.resource, Self.displayLightProperty.key]?.writableValues ?? []
 
         self.init(
             powerOptions: power.writableValues.compactMap(ACPower.init(rawValue:)),
             modes: mode.writableValues.map(ACMode.init(rawValue:)),
-            fanSpeeds: (airFlow[fanSpeedKey]?.writableValues ?? []).map(ACFanSpeed.init(rawValue:)),
-            fanSpeedKey: fanSpeedKey,
+            fan: FanCapability(airFlow: profile.resources[FanCapability.resource] ?? [:]),
             temperature: TemperatureCapability(profile: profile),
-            hasPowerSave: profile[Self.powerSaveProperty.resource, Self.powerSaveProperty.key]?.isWritable ?? false,
-            hasVerticalSwing: profile["windDirection", "rotateUpDown"]?.isWritable ?? false,
-            hasHorizontalSwing: profile["windDirection", "rotateLeftRight"]?.isWritable ?? false
+            hasPowerSave: Self.isWritable(Self.powerSaveProperty, in: profile),
+            hasVerticalSwing: Self.isWritable(Self.verticalSwingProperty, in: profile),
+            hasHorizontalSwing: Self.isWritable(Self.horizontalSwingProperty, in: profile),
+            hasDisplayLight: light.contains("ON") && light.contains("OFF"),
+            hasSleepTimer: Self.isWritable((ACCommand.sleepTimerResource, ACCommand.sleepHourKey), in: profile)
         )
+    }
+
+    private static func isWritable(_ property: (resource: String, key: String), in profile: DeviceProfile) -> Bool {
+        profile[property.resource, property.key]?.isWritable ?? false
     }
 }

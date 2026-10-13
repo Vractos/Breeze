@@ -9,11 +9,14 @@ struct CapabilitiesTests {
 
         #expect(caps.powerOptions == [.off, .on])
         #expect(caps.modes == [.airDry, .cool, .airClean])
-        #expect(caps.fanSpeeds == [.high, .low, .mid])
-        #expect(caps.fanSpeedKey == "windStrength")
+        #expect(caps.fan.options == [.level(1), .level(2), .level(3)])
+        #expect(caps.fan.levelValues == ["LOW", "MID", "HIGH"], "canonical order, not profile order")
+        #expect(caps.fan.levelKey == "windStrength")
         #expect(caps.hasPowerSave)
         #expect(!caps.hasVerticalSwing)
         #expect(!caps.hasHorizontalSwing)
+        #expect(!caps.hasDisplayLight)
+        #expect(caps.hasSleepTimer)
         let range = PropertySpec.NumericRange(min: 18, max: 30, step: 1)
         #expect(caps.temperature == TemperatureCapability(
             unit: .celsius,
@@ -28,8 +31,10 @@ struct CapabilitiesTests {
         let caps = try AirConditionerCapabilities(profile: Fixture.profileShapeB())
 
         #expect(caps.modes == [.cool, .airDry, .fan, .auto, .heat])
-        #expect(caps.fanSpeedKey == "windStrengthDetail")
-        #expect(caps.fanSpeeds == [.slow, .low, .mid, .high, .power, .auto, .nature])
+        #expect(caps.fan.levelKey == "windStrengthDetail")
+        #expect(caps.fan.levelValues == ["SLOW", "LOW", "MID", "HIGH", "POWER"])
+        #expect(caps.fan.autoKey == "windStrength")
+        #expect(caps.fan.options == [.auto, .level(1), .level(2), .level(3), .level(4), .level(5)])
         #expect(!caps.hasPowerSave)
         #expect(caps.hasVerticalSwing)
         #expect(!caps.hasHorizontalSwing, "read-only swing is not a capability")
@@ -67,7 +72,8 @@ struct CapabilitiesTests {
         #expect(caps.temperature.writeKey(for: .auto) == nil)
         #expect(caps.temperature.writeKey(for: nil)?.range.min == 18)
         #expect(caps.modes.isEmpty, "read-only mode yields no writable modes")
-        #expect(caps.fanSpeeds.isEmpty)
+        #expect(caps.fan == .unsupported)
+        #expect(!caps.hasSleepTimer)
     }
 
     @Test func everyModeSpecificSetpointIsRecorded() throws {
@@ -146,8 +152,9 @@ struct CapabilitiesTests {
         #expect(ACMode.auto.symbolName == "a.circle")
         #expect(ACMode.energySaving.symbolName == "leaf")
         #expect(ACMode.airClean.symbolName == "sparkles")
-        #expect(String(localized: ACFanSpeed.mid.displayName) == "Medium")
-        #expect(String(localized: ACFanSpeed(rawValue: "TURBO_WIND").displayName) == "Turbo Wind")
-        #expect(ACFanSpeed.auto.symbolName == "fan.badge.automatic")
+        #expect(String(localized: ACFanSetting.auto.displayName) == "Auto")
+        #expect(String(localized: ACFanSetting.level(3).displayName) == "3")
+        #expect(ACFanSetting.auto.symbolName == "fan.badge.automatic")
+        #expect(ACFanSetting.level(1).symbolName == "fan")
     }
 }

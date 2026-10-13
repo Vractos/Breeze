@@ -1,0 +1,54 @@
+{
+  "notification": { "push": ["WATER_IS_FULL"] },
+  "property": {
+    "airConJobMode": { "currentJobMode": { "mode": ["r", "w"], "type": "enum", "value": { "r": ["COOL", "AIR_DRY", "FAN"], "w": ["COOL", "AIR_DRY", "FAN"] } } },
+    "airFlow": {
+      "windStep": { "mode": ["r", "w"], "type": "range", "value": { "r": { "max": 5, "min": 1, "step": 1 }, "w": { "max": 5, "min": 1, "step": 1 } } },
+      "windStrength": { "mode": ["r", "w"], "type": "enum", "value": { "r": ["LOW", "MID", "HIGH", "AUTO"], "w": ["LOW", "MID", "HIGH", "AUTO"] } },
+      "windStrengthDetail": { "mode": ["r", "w"], "type": "enum", "value": { "r": ["NATURE", "LOW", "LOW_MID", "MID", "MID_HIGH", "HIGH"], "w": ["NATURE", "LOW", "LOW_MID", "MID", "MID_HIGH", "HIGH"] } }
+    },
+    "display": { "light": { "mode": ["r", "w"], "type": "enum", "value": { "r": ["ON", "OFF"], "w": ["ON", "OFF"] } } },
+    "operation": { "airConOperationMode": { "mode": ["r", "w"], "type": "enum", "value": { "r": ["POWER_OFF", "POWER_ON"], "w": ["POWER_OFF", "POWER_ON"] } } },
+    "runState": { "currentState": { "mode": ["r"], "type": "enum", "value": { "r": ["NORMAL", "ERROR"] } } },
+    "sleepTimer": {
+      "relativeHourToStop": { "mode": ["r", "w"], "type": "number" },
+      "relativeMinuteToStop": { "mode": ["r", "w"], "type": "number" },
+      "relativeStopTimer": { "mode": ["r", "w"], "type": "enum", "value": { "r": ["SET", "UNSET"], "w": ["UNSET"] } }
+    },
+    "temperature": {
+      "coolTargetTemperature": { "mode": ["w"], "type": "range", "value": { "w": { "max": 30, "min": 16, "step": 0.5 } } },
+      "currentTemperature": { "mode": ["r"], "type": "number" },
+      "maxTargetTemperature": { "mode": ["r"], "type": "number" },
+      "minTargetTemperature": { "mode": ["r"], "type": "number" },
+      "targetTemperature": { "mode": ["r", "w"], "type": "range", "value": { "r": { "max": 30, "min": 16, "step": 0.5 }, "w": { "max": 30, "min": 16, "step": 0.5 } } },
+      "unit": { "mode": ["r"], "type": "enum", "value": { "r": ["C"] } }
+    },
+    "temperatureInUnits": [
+      {
+        "coolTargetTemperature": { "mode": ["w"], "type": "range", "value": { "w": { "max": 30, "min": 16, "step": 0.5 } } },
+        "currentTemperature": { "mode": ["r"], "type": "number" },
+        "maxTargetTemperature": { "mode": ["r"], "type": "number" },
+        "minTargetTemperature": { "mode": ["r"], "type": "number" },
+        "targetTemperature": { "mode": ["r"], "type": "number" },
+        "unit": "C"
+      },
+      {
+        "coolTargetTemperature": { "mode": ["w"], "type": "range", "value": { "w": { "max": 86, "min": 60, "step": 1 } } },
+        "currentTemperature": { "mode": ["r"], "type": "number" },
+        "maxTargetTemperature": { "mode": ["r"], "type": "number" },
+        "minTargetTemperature": { "mode": ["r"], "type": "number" },
+        "targetTemperature": { "mode": ["r"], "type": "number" },
+        "unit": "F"
+      }
+    ],
+    "timer": {
+      "absoluteHourToStart": { "mode": ["r", "w"], "type": "number" },
+      "absoluteHourToStop": { "mode": ["r", "w"], "type": "number" },
+      "absoluteMinuteToStart": { "mode": ["r", "w"], "type": "number" },
+      "absoluteMinuteToStop": { "mode": ["r", "w"], "type": "number" },
+      "absoluteStartTimer": { "mode": ["r", "w"], "type": "enum", "value": { "r": ["SET", "UNSET"], "w": ["UNSET"] } },
+      "absoluteStopTimer": { "mode": ["r", "w"], "type": "enum", "value": { "r": ["SET", "UNSET"], "w": ["UNSET"] } }
+    },
+    "windDirection": { "rotateUpDown": { "mode": ["r", "w"], "type": "boolean", "value": { "r": [true, false], "w": [true, false] } } }
+  }
+}

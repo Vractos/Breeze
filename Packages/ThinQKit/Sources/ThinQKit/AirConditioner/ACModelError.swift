@@ -6,7 +6,9 @@ public enum ACModelError: Error, Sendable, Equatable, CustomStringConvertible {
     case notWritable(String)
     case unsupportedPower(ACPower)
     case unsupportedMode(ACMode)
-    case unsupportedFanSpeed(ACFanSpeed)
+    case unsupportedFan(ACFanSetting)
+    /// Not 30 min or a whole number of hours from 1 to 12.
+    case invalidSleepTimer(minutes: Int)
     /// Out of range, not on a step, or in the `except` list.
     case invalidTargetTemperature(Double, allowed: PropertySpec.NumericRange)
 
@@ -20,8 +22,10 @@ public enum ACModelError: Error, Sendable, Equatable, CustomStringConvertible {
             "Power \(power.rawValue) is not allowed by the profile"
         case .unsupportedMode(let mode):
             "Mode \(mode.rawValue) is not supported by this model"
-        case .unsupportedFanSpeed(let speed):
-            "Fan speed \(speed.rawValue) is not supported by this model"
+        case .unsupportedFan(let setting):
+            "Fan \(setting) is not supported by this model"
+        case .invalidSleepTimer(let minutes):
+            "Sleep timer of \(minutes) min is not allowed (30 min, or whole hours from 1 to 12)"
         case .invalidTargetTemperature(let value, let allowed):
             "Target \(value.formatted()) is not allowed (min \(allowed.min.formatted()), max \(allowed.max.formatted())"
                 + (allowed.step.map { ", step \($0.formatted())" } ?? "")

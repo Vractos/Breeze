@@ -49,7 +49,8 @@ struct ErrorCodeTests {
     }
 
     @Test(arguments: [
-        ACCommand.mode(.cool), .targetTemperature(22), .fanSpeed(.low), .powerSave(true), .powerSave(false),
+        ACCommand.mode(.cool), .targetTemperature(22), .fan(.level(1)), .fan(.auto), .powerSave(true), .powerSave(false),
+        .verticalSwing(true), .horizontalSwing(false), .displayLight(true), .sleepTimer(minutes: 60), .sleepTimer(minutes: nil),
     ])
     func nonPowerCommandsAreNeverRedundant(command: ACCommand) {
         // 2304 on these means "the AC is off; turn it on first".

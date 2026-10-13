@@ -4,9 +4,14 @@ import Foundation
 public enum ACCommand: Sendable, Equatable {
     case power(ACPower)
     case mode(ACMode)
-    case fanSpeed(ACFanSpeed)
+    case fan(ACFanSetting)
     case targetTemperature(Double)
     case powerSave(Bool)
+    case verticalSwing(Bool)
+    case horizontalSwing(Bool)
+    case displayLight(Bool)
+    /// 30 min or whole hours 1–12 (`ACModelError.invalidSleepTimer` otherwise); `nil` cancels.
+    case sleepTimer(minutes: Int?)
 
     /// Validates the command against the profile-derived capabilities and builds the body for
     /// `ThinQClient.control(deviceID:body:)`.
@@ -19,6 +24,11 @@ public enum ACCommand: Sendable, Equatable {
         case .targetTemperature(let value):
             let setpoint = try Self.validatedSetpoint(value, caps: caps, mode: currentMode)
             return Self.temperaturePayload(setpoint, caps: caps)
+        case .fan(let setting):
+            return try caps.fan.payload(for: setting)
+        case .sleepTimer(let minutes):
+            try Self.validateSleepTimer(minutes: minutes, caps: caps)
+            return Self.sleepTimerPayload(minutes: minutes)
         case .power(let power):
             try Self.check(
                 power,
@@ -33,33 +43,34 @@ public enum ACCommand: Sendable, Equatable {
                 property: AirConditionerCapabilities.modeProperty,
                 unsupported: .unsupportedMode(mode)
             )
-        case .fanSpeed(let speed):
-            try Self.check(
-                speed,
-                allowed: caps.fanSpeeds,
-                property: (AirConditionerCapabilities.fanResource, caps.fanSpeedKey),
-                unsupported: .unsupportedFanSpeed(speed)
-            )
         case .powerSave:
-            guard caps.hasPowerSave else {
-                throw .notWritable(Self.path(AirConditionerCapabilities.powerSaveProperty))
-            }
+            try Self.requireWritable(caps.hasPowerSave, AirConditionerCapabilities.powerSaveProperty)
+        case .verticalSwing:
+            try Self.requireWritable(caps.hasVerticalSwing, AirConditionerCapabilities.verticalSwingProperty)
+        case .horizontalSwing:
+            try Self.requireWritable(caps.hasHorizontalSwing, AirConditionerCapabilities.horizontalSwingProperty)
+        case .displayLight:
+            try Self.requireWritable(caps.hasDisplayLight, AirConditionerCapabilities.displayLightProperty)
         }
-        return simpleDelta(for: caps)
+        return simpleDelta
     }
 
     /// Optimistically merges the command's effect into a local state (no validation; the next
     /// fetched state wins anyway). The setpoint key follows the mode recorded in `state`.
     public func apply(to state: inout DeviceState, caps: AirConditionerCapabilities) {
-        guard case .targetTemperature(let value) = self else {
-            state.merge(delta: simpleDelta(for: caps))
-            return
+        switch self {
+        case .targetTemperature(let value):
+            let modeProperty = AirConditionerCapabilities.modeProperty
+            let mode = state[modeProperty.resource, modeProperty.key]?.stringValue.map(ACMode.init(rawValue:))
+            let setpoint = Self.effectiveSetpoint(value, caps: caps, mode: mode)
+            state.merge(delta: Self.temperatureStateDelta(setpoint, caps: caps, current: state))
+        case .fan(let setting):
+            state.merge(delta: caps.fan.stateDelta(for: setting))
+        case .sleepTimer(let minutes):
+            state.merge(delta: Self.sleepTimerStateDelta(minutes: minutes))
+        case .power, .mode, .powerSave, .verticalSwing, .horizontalSwing, .displayLight:
+            state.merge(delta: simpleDelta)
         }
-        let modeProperty = AirConditionerCapabilities.modeProperty
-        let mode = state[modeProperty.resource, modeProperty.key]?.stringValue.map(ACMode.init(rawValue:))
-        let setpoint = Self.effectiveSetpoint(value, caps: caps, mode: mode)
-        let delta = Self.temperatureStateDelta(setpoint, caps: caps, current: state)
-        state.merge(delta: delta)
     }
 
     /// Whether `error` only says this command was already in effect: `2302` for POWER_ON while
@@ -84,6 +95,10 @@ public enum ACCommand: Sendable, Equatable {
     ) throws(ACModelError) {
         guard !allowed.isEmpty else { throw .notWritable(path(property)) }
         guard allowed.contains(value) else { throw unsupported }
+    }
+
+    private static func requireWritable(_ isWritable: Bool, _ property: (resource: String, key: String)) throws(ACModelError) {
+        guard isWritable else { throw .notWritable(path(property)) }
     }
 
     /// A setpoint resolved for the current mode: the property to write and the exact value.
@@ -179,24 +194,29 @@ public enum ACCommand: Sendable, Equatable {
         return entry
     }
 
-    /// Bodies whose payload and state delta are identical (everything but the setpoint).
-    private func simpleDelta(for caps: AirConditionerCapabilities) -> JSONObject {
+    /// Bodies whose payload and state delta are identical: power, mode, eco, swing, display light.
+    private var simpleDelta: JSONObject {
         switch self {
         case .power(let power):
-            let property = AirConditionerCapabilities.powerProperty
-            return [property.resource: [property.key: .string(power.rawValue)]]
+            Self.body(AirConditionerCapabilities.powerProperty, .string(power.rawValue))
         case .mode(let mode):
-            let property = AirConditionerCapabilities.modeProperty
-            return [property.resource: [property.key: .string(mode.rawValue)]]
-        case .fanSpeed(let speed):
-            return [AirConditionerCapabilities.fanResource: [caps.fanSpeedKey: .string(speed.rawValue)]]
+            Self.body(AirConditionerCapabilities.modeProperty, .string(mode.rawValue))
         case .powerSave(let enabled):
-            let property = AirConditionerCapabilities.powerSaveProperty
-            return [property.resource: [property.key: .bool(enabled)]]
-        case .targetTemperature(let value):
-            // Unreachable in practice: `payload` and `apply` both handle the setpoint first.
-            return Self.temperaturePayload(Self.effectiveSetpoint(value, caps: caps, mode: nil), caps: caps)
+            Self.body(AirConditionerCapabilities.powerSaveProperty, .bool(enabled))
+        case .verticalSwing(let enabled):
+            Self.body(AirConditionerCapabilities.verticalSwingProperty, .bool(enabled))
+        case .horizontalSwing(let enabled):
+            Self.body(AirConditionerCapabilities.horizontalSwingProperty, .bool(enabled))
+        case .displayLight(let isOn):
+            Self.body(AirConditionerCapabilities.displayLightProperty, .string(isOn ? "ON" : "OFF"))
+        case .targetTemperature, .fan, .sleepTimer:
+            // Unreachable: `payload` and `apply` use these commands' own builders first.
+            [:]
         }
+    }
+
+    private static func body(_ property: (resource: String, key: String), _ value: JSONValue) -> JSONObject {
+        [property.resource: [property.key: value]]
     }
 
     private static func path(_ property: (resource: String, key: String)) -> String {

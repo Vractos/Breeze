@@ -12,9 +12,11 @@ struct CommandValidationTests {
         }
     }
 
-    @Test func unknownFanSpeedRejected() throws {
+    @Test func unofferedFanSettingRejected() throws {
         let caps = try AirConditionerCapabilities(profile: Fixture.profileShapeA())
-        #expect(throws: ACModelError.unsupportedFanSpeed(.auto)) { try ACCommand.fanSpeed(.auto).payload(for: caps, currentMode: nil) }
+        #expect(throws: ACModelError.unsupportedFan(.auto)) { try ACCommand.fan(.auto).payload(for: caps, currentMode: nil) }
+        #expect(throws: ACModelError.unsupportedFan(.level(4))) { try ACCommand.fan(.level(4)).payload(for: caps, currentMode: nil) }
+        #expect(throws: ACModelError.unsupportedFan(.level(0))) { try ACCommand.fan(.level(0)).payload(for: caps, currentMode: nil) }
     }
 
     @Test(arguments: [17.0, 31.0, 22.5, -5.0])
@@ -47,9 +49,9 @@ struct CommandValidationTests {
         #expect(throws: ACModelError.notWritable("airConJobMode.currentJobMode")) {
             try ACCommand.mode(.cool).payload(for: caps, currentMode: nil)
         }
-        caps.fanSpeeds = []
+        caps.fan = .unsupported
         #expect(throws: ACModelError.notWritable("airFlow.windStrength")) {
-            try ACCommand.fanSpeed(.high).payload(for: caps, currentMode: nil)
+            try ACCommand.fan(.level(1)).payload(for: caps, currentMode: nil)
         }
         caps.powerOptions = []
         #expect(throws: ACModelError.notWritable("operation.airConOperationMode")) {

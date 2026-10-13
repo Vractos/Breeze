@@ -50,6 +50,49 @@ public struct ThinQClient: ThinQAPI {
         _ = try await send(.post, ["devices", deviceID, "control"], body: .object(body), conditionalControl: true)
     }
 
+    // MARK: - Energy
+
+    /// The raw `response` of `GET devices/energy/{id}/profile`; see `energyProperties`.
+    public func energyProfileJSON(deviceID: String) async throws(ThinQError) -> JSONValue? {
+        try await send(.get, ["devices", "energy", deviceID, "profile"])
+    }
+
+    /// The raw `response` of `GET devices/energy/{id}/usage`; see `energyUsage`. `from` and `to`
+    /// are the first and last day (`.daily`) or month (`.monthly`) in the user's local calendar,
+    /// at most 31 days or 12 months apart, inclusive.
+    public func energyUsageJSON(
+        deviceID: String,
+        property: String,
+        period: EnergyPeriod,
+        from: DateComponents,
+        to: DateComponents
+    ) async throws(ThinQError) -> JSONValue? {
+        let dates = try period.queryDates(from: from, to: to)
+        // The spec's path omits `property`; LG's SDK always sends it.
+        let query = [
+            URLQueryItem(name: "property", value: property),
+            URLQueryItem(name: "period", value: period.rawValue),
+            URLQueryItem(name: "startDate", value: dates.start),
+            URLQueryItem(name: "endDate", value: dates.end),
+        ]
+        return try await send(.get, ["devices", "energy", deviceID, "usage"], query: query)
+    }
+
+    public func energyProperties(deviceID: String) async throws(ThinQError) -> [String] {
+        try EnergyResponse.properties(json: try await energyProfileJSON(deviceID: deviceID))
+    }
+
+    public func energyUsage(
+        deviceID: String,
+        property: String,
+        period: EnergyPeriod,
+        from: DateComponents,
+        to: DateComponents
+    ) async throws(ThinQError) -> [EnergyUsageEntry] {
+        let response = try await energyUsageJSON(deviceID: deviceID, property: property, period: period, from: from, to: to)
+        return try EnergyResponse.entries(json: response, property: property)
+    }
+
     // MARK: - REST side of MQTT setup
 
     public func route() async throws(ThinQError) -> RouteInfo {
@@ -113,6 +156,7 @@ public struct ThinQClient: ThinQAPI {
     func makeRequest(
         _ method: Method,
         _ pathComponents: [String],
+        query: [URLQueryItem] = [],
         body: JSONValue?,
         conditionalControl: Bool
     ) throws(ThinQError) -> URLRequest {
@@ -122,8 +166,11 @@ public struct ThinQClient: ThinQAPI {
         for component in pathComponents where component.isEmpty || component == "." || component == ".." {
             throw ThinQError.invalidArgument("path component '\(component)' is empty or a dot-segment")
         }
-        let url = pathComponents.reduce(configuration.region.baseURL) { url, component in
+        var url = pathComponents.reduce(configuration.region.baseURL) { url, component in
             url.appending(component: component, directoryHint: .notDirectory)
+        }
+        if !query.isEmpty {
+            url.append(queryItems: query)
         }
         var request = URLRequest(url: url, timeoutInterval: configuration.timeoutInterval)
         request.httpMethod = method.rawValue
@@ -146,11 +193,12 @@ public struct ThinQClient: ThinQAPI {
     private func send(
         _ method: Method,
         _ pathComponents: [String],
+        query: [URLQueryItem] = [],
         body: JSONValue? = nil,
         conditionalControl: Bool = false
     ) async throws(ThinQError) -> JSONValue? {
         let path = pathComponents.joined(separator: "/")
-        let request = try makeRequest(method, pathComponents, body: body, conditionalControl: conditionalControl)
+        let request = try makeRequest(method, pathComponents, query: query, body: body, conditionalControl: conditionalControl)
         let clock = ContinuousClock()
         let start = clock.now
 

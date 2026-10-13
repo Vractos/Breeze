@@ -8,6 +8,9 @@ enum CLICommand: Equatable {
     case profile(deviceID: String, raw: Bool)
     case state(deviceID: String, raw: Bool)
     case set(deviceID: String, command: ACCommand)
+    /// A control body POSTed as-is, without capability checks; for probing the real unit.
+    case setRaw(deviceID: String, body: JSONObject)
+    case energy(deviceID: String)
     case watch(deviceID: String, everySeconds: Int)
 
     static let defaultWatchInterval = 120
@@ -24,9 +27,16 @@ enum CLICommand: Equatable {
           state <deviceId> [--raw]         current state, or the raw state JSON
           set <deviceId> power on|off
           set <deviceId> mode <MODE>       e.g. COOL, AIR_DRY, FAN (see `profile`)
-          set <deviceId> fan <SPEED>       e.g. LOW, MID, HIGH, AUTO
+          set <deviceId> fan AUTO|<level>  level 1…n, slowest first (see `profile`)
           set <deviceId> temp <degrees>    e.g. 22 or 22.5
           set <deviceId> eco on|off
+          set <deviceId> swing on|off      up/down swing
+          set <deviceId> light on|off      display light
+          set <deviceId> sleep <minutes>|off
+                                           30, or whole hours 60…720
+          set <deviceId> raw '<json>'      POST a control body as-is, without checks, e.g.
+                                           '{"airFlow":{"windStrength":"AUTO"}}'
+          energy <deviceId>                raw energy profile and usage (this month, last 7 days)
           watch <deviceId> [--every N]     poll every N seconds (default 120) and print changes
           help                             show this text
 
@@ -59,6 +69,8 @@ enum CLICommand: Equatable {
             return try parseSet(rest)
         case "watch":
             return try parseWatch(rest)
+        case "energy":
+            return .energy(deviceID: try singleDeviceID(rest, command: name))
         default:
             throw .usage("unknown command '\(name)'")
         }
@@ -87,11 +99,14 @@ enum CLICommand: Equatable {
 
     private static func parseSet(_ arguments: [String]) throws(CLIFailure) -> CLICommand {
         guard arguments.count == 3 else {
-            throw .usage("'set' needs <deviceId> <power|mode|fan|temp|eco> <value>")
+            throw .usage("'set' needs <deviceId> <power|mode|fan|temp|eco|swing|light|sleep|raw> <value> (quote raw JSON)")
         }
         let deviceID = arguments[0]
         try expectDeviceID(deviceID)
         let value = arguments[2]
+        if arguments[1].lowercased() == "raw" {
+            return .setRaw(deviceID: deviceID, body: try parseRawBody(value))
+        }
         let command: ACCommand
         switch arguments[1].lowercased() {
         case "power":
@@ -99,7 +114,7 @@ enum CLICommand: Equatable {
         case "mode":
             command = .mode(ACMode(rawValue: value.uppercased()))
         case "fan":
-            command = .fanSpeed(ACFanSpeed(rawValue: value.uppercased()))
+            command = .fan(try parseFan(value))
         case "temp", "temperature":
             guard let degrees = Double(value), degrees.isFinite else {
                 throw .usage("temperature must be a number, got '\(value)'")
@@ -107,10 +122,47 @@ enum CLICommand: Equatable {
             command = .targetTemperature(degrees)
         case "eco":
             command = .powerSave(try parseOnOff(value, setting: "eco"))
+        case "swing":
+            command = .verticalSwing(try parseOnOff(value, setting: "swing"))
+        case "light":
+            command = .displayLight(try parseOnOff(value, setting: "light"))
+        case "sleep":
+            command = .sleepTimer(minutes: try parseSleep(value))
         default:
-            throw .usage("unknown setting '\(arguments[1])'; expected power, mode, fan, temp or eco")
+            throw .usage("unknown setting '\(arguments[1])'; expected power, mode, fan, temp, eco, swing, light, sleep or raw")
         }
         return .set(deviceID: deviceID, command: command)
+    }
+
+    /// `AUTO` or a level ≥ 1; the upper bound comes from the profile when the command is sent.
+    private static func parseFan(_ value: String) throws(CLIFailure) -> ACFanSetting {
+        if value.uppercased() == "AUTO" { return .auto }
+        guard let level = Int(value), level >= 1 else {
+            throw .usage("fan must be AUTO or a level from 1 (slowest), got '\(value)'")
+        }
+        return .level(level)
+    }
+
+    /// `off` cancels; otherwise minutes, validated against what LG accepts when sent.
+    private static func parseSleep(_ value: String) throws(CLIFailure) -> Int? {
+        if value.lowercased() == "off" { return nil }
+        guard let minutes = Int(value), minutes > 0 else {
+            throw .usage("sleep must be off or a number of minutes (30, 60, 120, … 720), got '\(value)'")
+        }
+        return minutes
+    }
+
+    private static func parseRawBody(_ text: String) throws(CLIFailure) -> JSONObject {
+        let json: JSONValue
+        do {
+            json = try JSONValue(jsonData: Data(text.utf8))
+        } catch {
+            throw .usage("raw body is not valid JSON: \(error)")
+        }
+        guard let body = json.objectValue, !body.isEmpty else {
+            throw .usage("raw body must be a non-empty JSON object, e.g. '{\"airFlow\":{\"windStrength\":\"AUTO\"}}'")
+        }
+        return body
     }
 
     private static func parseOnOff(_ value: String, setting: String) throws(CLIFailure) -> Bool {

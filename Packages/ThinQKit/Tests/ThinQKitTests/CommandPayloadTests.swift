@@ -10,7 +10,7 @@ struct CommandPayloadTests {
         #expect(try ACCommand.power(.on).payload(for: caps, currentMode: nil) == ["operation": ["airConOperationMode": "POWER_ON"]])
         #expect(try ACCommand.power(.off).payload(for: caps, currentMode: nil) == ["operation": ["airConOperationMode": "POWER_OFF"]])
         #expect(try ACCommand.mode(.cool).payload(for: caps, currentMode: nil) == ["airConJobMode": ["currentJobMode": "COOL"]])
-        #expect(try ACCommand.fanSpeed(.high).payload(for: caps, currentMode: nil) == ["airFlow": ["windStrength": "HIGH"]])
+        #expect(try ACCommand.fan(.level(3)).payload(for: caps, currentMode: nil) == ["airFlow": ["windStrength": "HIGH"]])
         #expect(try ACCommand.targetTemperature(22).payload(for: caps, currentMode: nil) == ["temperature": ["targetTemperature": 22]])
         #expect(try ACCommand.powerSave(true).payload(for: caps, currentMode: nil) == ["powerSave": ["powerSaveEnabled": true]])
         #expect(try ACCommand.powerSave(false).payload(for: caps, currentMode: nil) == ["powerSave": ["powerSaveEnabled": false]])
@@ -19,7 +19,8 @@ struct CommandPayloadTests {
     @Test func shapeBPayloads() throws {
         let caps = try AirConditionerCapabilities(profile: Fixture.profileShapeB())
 
-        #expect(try ACCommand.fanSpeed(.nature).payload(for: caps, currentMode: nil) == ["airFlow": ["windStrengthDetail": "NATURE"]])
+        #expect(try ACCommand.fan(.auto).payload(for: caps, currentMode: nil) == ["airFlow": ["windStrength": "AUTO"]])
+        #expect(try ACCommand.fan(.level(1)).payload(for: caps, currentMode: nil) == ["airFlow": ["windStrengthDetail": "SLOW"]])
         #expect(try ACCommand.targetTemperature(22.5).payload(for: caps, currentMode: nil) == [
             "temperatureInUnits": ["targetTemperature": 22.5, "unit": "C"],
         ])

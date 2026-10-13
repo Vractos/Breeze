@@ -31,6 +31,16 @@ enum Fixture {
     static func stateShapeB() throws -> DeviceState {
         try DeviceState(json: json("air_conditioner-state-shape-b"))
     }
+
+    /// A real unit, dumped with `thinq profile|state --raw`.
+    static func realProfile() throws -> DeviceProfile {
+        try DeviceProfile(json: json("real-ac-profile"))
+    }
+
+    /// The real unit at fan level 1, swing on, light off, no sleep timer.
+    static func realState() throws -> DeviceState {
+        try DeviceState(json: json("real-ac-state"))
+    }
 }
 
 extension Fixture {

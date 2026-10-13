@@ -1,0 +1,90 @@
+{
+  "notification": {
+    "push": []
+  },
+  "property": {
+    "airConJobMode": {
+      "currentJobMode": {
+        "mode": ["r", "w"],
+        "type": "enum",
+        "value": {
+          "r": ["COOL", "AIR_DRY", "FAN", "AUTO", "HEAT", "ENERGY_SAVING"],
+          "w": ["COOL", "AIR_DRY", "FAN", "AUTO", "HEAT"]
+        }
+      }
+    },
+    "airFlow": {
+      "windStrength": {
+        "mode": ["r", "w"],
+        "type": "enum",
+        "value": {
+          "r": ["LOW", "MID", "HIGH", "AUTO"],
+          "w": ["LOW", "MID", "HIGH", "AUTO"]
+        }
+      },
+      "windStrengthDetail": {
+        "mode": ["r", "w"],
+        "type": "enum",
+        "value": {
+          "r": ["SLOW", "LOW", "MID", "HIGH", "POWER", "AUTO", "NATURE"],
+          "w": ["SLOW", "LOW", "MID", "HIGH", "POWER", "AUTO", "NATURE"]
+        }
+      }
+    },
+    "operation": {
+      "airConOperationMode": {
+        "mode": ["r", "w"],
+        "type": "enum",
+        "value": {
+          "r": ["POWER_ON", "POWER_OFF"],
+          "w": ["POWER_ON", "POWER_OFF"]
+        }
+      }
+    },
+    "windDirection": {
+      "rotateUpDown": {
+        "mode": ["r", "w"],
+        "type": "boolean",
+        "value": {"r": [false, true], "w": [false, true]}
+      },
+      "rotateLeftRight": {
+        "mode": ["r"],
+        "type": "boolean",
+        "value": {"r": [false, true]}
+      }
+    },
+    "temperatureInUnits": [
+      {
+        "unit": "F",
+        "currentTemperature": {"mode": ["r"], "type": "number"},
+        "targetTemperature": {
+          "mode": ["r", "w"],
+          "type": "range",
+          "value": {
+            "r": {"min": 60, "max": 86, "step": 1},
+            "w": {"min": 60, "max": 86, "step": 1}
+          }
+        }
+      },
+      {
+        "unit": "C",
+        "currentTemperature": {"mode": ["r"], "type": "number"},
+        "targetTemperature": {
+          "mode": ["r", "w"],
+          "type": "range",
+          "value": {
+            "r": {"min": 16, "max": 30, "step": 0.5},
+            "w": {"min": 16, "max": 30, "step": 0.5, "except": [29.5]}
+          }
+        },
+        "minTargetTemperature": {"mode": ["r"], "type": "number"},
+        "maxTargetTemperature": {"mode": ["r"], "type": "number"},
+        "coolTargetTemperature": {
+          "mode": ["w"],
+          "type": "range",
+          "value": {"w": {"min": 18, "max": 30, "step": 1}}
+        }
+      }
+    ]
+  }
+}

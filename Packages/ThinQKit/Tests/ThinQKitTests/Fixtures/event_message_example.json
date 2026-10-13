@@ -1,0 +1,18 @@
+{
+  "messageId": "W1FKFRBZRkiuFAfU9pb6kw",
+  "timestamp": "2019-06-20T01:14:27.069000",
+  "event": {
+    "pushType": "DEVICE_STATUS",
+    "serviceId": "6b2011e7ff026e984215522d",
+    "deviceId": "HW1-69C3EDD9-1993-4442-B139-794CA5997ECA",
+    "report": {
+      "operation": {
+        "airConOperationMode": "POWER_ON"
+      }
+    },
+    "deviceType": "DEVICE_WASHER",
+    "userList": [
+      "KR1910213944934"
+    ]
+  }
+}

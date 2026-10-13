@@ -1,0 +1,20 @@
+{
+  "airConJobMode": {
+    "currentJobMode": "COOL"
+  },
+  "airFlow": {
+    "windStrength": "MID",
+    "windStrengthDetail": "NATURE"
+  },
+  "operation": {
+    "airConOperationMode": "POWER_ON"
+  },
+  "windDirection": {
+    "rotateUpDown": true,
+    "rotateLeftRight": false
+  },
+  "temperatureInUnits": [
+    {"unit": "F", "currentTemperature": 75, "targetTemperature": 72},
+    {"unit": "C", "currentTemperature": 24, "targetTemperature": 22.5}
+  ]
+}

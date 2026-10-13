@@ -38,6 +38,30 @@ cd Packages/ThinQKit
 swift test
 ```
 
+## Install
+
+To use Breeze as a normal app (Spotlight, Launchpad, launch at login) rather than a build that
+Xcode runs:
+
+1. Choose your own signing team first (step 2 above). A free Personal Team is enough.
+2. Run:
+
+   ```sh
+   scripts/install.sh
+   ```
+
+   It builds a Release archive into `build/`, checks the code signature, quits Breeze if it is
+   running, installs the app as `/Applications/Breeze.app` (the old copy is replaced only once
+   the new one is fully copied), opens it and prints the version. No `sudo` needed.
+3. Run it again after pulling changes to update.
+
+To install somewhere other than `/Applications`, set `BREEZE_INSTALL_DIR=<dir>`.
+
+The installed app and a copy you run from Xcode share the same bundle identifier, settings and
+Keychain item. Quit the installed Breeze before pressing ⌘R, or you get two menu bar icons. If
+launch at login is on, the copy in `/Applications` takes the login item over the next time it
+starts.
+
 ## The `thinq` command-line tool
 
 `Packages/ThinQKit` also builds `thinq`, a small CLI on top of the same library. It is handy for
@@ -67,6 +91,7 @@ flag, so it stays out of your shell history.
 | `Breeze/` | The SwiftUI app: menu bar panel, Settings window, the store that polls and sends commands, Keychain and login-item services |
 | `Packages/ThinQKit/` | Swift package with the ThinQ Connect client and air-conditioner model (no UI code), plus the `thinq` CLI and its tests |
 | `BreezeTests/` | Tests for the app |
+| `scripts/install.sh` | Builds and installs the app into `/Applications` |
 
 ## Privacy
 

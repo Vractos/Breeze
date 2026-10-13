@@ -1,0 +1,324 @@
+{
+  "notification": {
+    "push": [
+      "WATER_IS_FULL"
+    ]
+  },
+  "property": {
+    "airConJobMode": {
+      "currentJobMode": {
+        "mode": [
+          "r",
+          "w"
+        ],
+        "type": "enum",
+        "value": {
+          "r": [
+            "AIR_DRY",
+            "COOL",
+            "AIR_CLEAN"
+          ],
+          "w": [
+            "AIR_DRY",
+            "COOL",
+            "AIR_CLEAN"
+          ]
+        }
+      }
+    },
+    "airFlow": {
+      "windStrength": {
+        "mode": [
+          "r",
+          "w"
+        ],
+        "type": "enum",
+        "value": {
+          "r": [
+            "HIGH",
+            "LOW",
+            "MID"
+          ],
+          "w": [
+            "HIGH",
+            "LOW",
+            "MID"
+          ]
+        }
+      }
+    },
+    "filterInfo": {
+      "filterLifetime": {
+        "mode": [
+          "r"
+        ],
+        "type": "number"
+      },
+      "usedTime": {
+        "mode": [
+          "r"
+        ],
+        "type": "number"
+      }
+    },
+    "airQualitySensor": {
+      "PM1": {
+        "mode": [
+          "r"
+        ],
+        "type": "number"
+      },
+      "PM10": {
+        "mode": [
+          "r"
+        ],
+        "type": "number"
+      },
+      "PM2": {
+        "mode": [
+          "r"
+        ],
+        "type": "number"
+      },
+      "humidity": {
+        "mode": [
+          "r"
+        ],
+        "type": "number"
+      },
+      "totalPollution": {
+        "mode": [
+          "r"
+        ],
+        "type": "number"
+      },
+      "totalPollutionLevel": {
+        "mode": [
+          "r"
+        ],
+        "type": "enum",
+        "value": {
+          "r": [
+            "INVALID",
+            "GOOD",
+            "NORMAL",
+            "BAD",
+            "VERY_BAD"
+          ]
+        }
+      },
+      "monitoringEnabled": {
+        "mode": [
+          "r",
+          "w"
+        ],
+        "type": "enum",
+        "value": {
+          "r": [
+            "ON_WORKING",
+            "ALWAYS"
+          ],
+          "w": [
+            "ON_WORKING",
+            "ALWAYS"
+          ]
+        }
+      }
+    },
+    "operation": {
+      "airCleanOperationMode": {
+        "mode": [
+          "w"
+        ],
+        "type": "enum",
+        "value": {
+          "w": [
+            "STOP",
+            "START"
+          ]
+        }
+      },
+      "airConOperationMode": {
+        "mode": [
+          "r",
+          "w"
+        ],
+        "type": "enum",
+        "value": {
+          "r": [
+            "POWER_OFF",
+            "POWER_ON"
+          ],
+          "w": [
+            "POWER_OFF",
+            "POWER_ON"
+          ]
+        }
+      }
+    },
+    "powerSave": {
+      "powerSaveEnabled": {
+        "mode": [
+          "r",
+          "w"
+        ],
+        "type": "boolean",
+        "value": {
+          "r": [
+            false,
+            true
+          ],
+          "w": [
+            false,
+            true
+          ]
+        }
+      }
+    },
+    "sleepTimer": {
+      "relativeHourToStop": {
+        "mode": [
+          "r",
+          "w"
+        ],
+        "type": "number"
+      },
+      "relativeMinuteToStop": {
+        "mode": [
+          "r",
+          "w"
+        ],
+        "type": "number"
+      },
+      "relativeStopTimer": {
+        "mode": [
+          "r",
+          "w"
+        ],
+        "type": "enum",
+        "value": {
+          "r": [
+            "SET",
+            "UNSET"
+          ],
+          "w": [
+            "UNSET"
+          ]
+        }
+      }
+    },
+    "temperature": {
+      "coolTargetTemperature": {
+        "mode": [
+          "w"
+        ],
+        "type": "range",
+        "value": {
+          "w": {
+            "max": 30,
+            "min": 18,
+            "step": 1
+          }
+        }
+      },
+      "currentTemperature": {
+        "mode": [
+          "r"
+        ],
+        "type": "number"
+      },
+      "targetTemperature": {
+        "mode": [
+          "r",
+          "w"
+        ],
+        "type": "range",
+        "value": {
+          "r": {
+            "max": 30,
+            "min": 18,
+            "step": 1
+          },
+          "w": {
+            "max": 30,
+            "min": 18,
+            "step": 1
+          }
+        }
+      },
+      "unit": {
+        "mode": [
+          "r"
+        ],
+        "type": "enum",
+        "value": {
+          "r": [
+            "C"
+          ]
+        }
+      }
+    },
+    "timer": {
+      "relativeHourToStart": {
+        "mode": [
+          "r",
+          "w"
+        ],
+        "type": "number"
+      },
+      "relativeHourToStop": {
+        "mode": [
+          "r",
+          "w"
+        ],
+        "type": "number"
+      },
+      "relativeMinuteToStart": {
+        "mode": [
+          "r",
+          "w"
+        ],
+        "type": "number"
+      },
+      "relativeMinuteToStop": {
+        "mode": [
+          "r",
+          "w"
+        ],
+        "type": "number"
+      },
+      "relativeStartTimer": {
+        "mode": [
+          "r",
+          "w"
+        ],
+        "type": "enum",
+        "value": {
+          "r": [
+            "SET",
+            "UNSET"
+          ],
+          "w": [
+            "UNSET"
+          ]
+        }
+      },
+      "relativeStopTimer": {
+        "mode": [
+          "r",
+          "w"
+        ],
+        "type": "enum",
+        "value": {
+          "r": [
+            "SET",
+            "UNSET"
+          ],
+          "w": [
+            "UNSET"
+          ]
+        }
+      }
+    }
+  }
+}

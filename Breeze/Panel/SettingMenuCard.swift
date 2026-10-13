@@ -1,0 +1,76 @@
+import SwiftUI
+
+/// A glass card that opens a menu of options (mode or fan speed): symbol, title and the current
+/// value; the menu marks the current value with a checkmark.
+struct SettingMenuCard<Option: Hashable>: View {
+    let title: LocalizedStringResource
+    let selection: Option?
+    let options: [Option]
+    let name: (Option) -> LocalizedStringResource
+    let symbolName: (Option) -> String
+    /// Shown when the AC hasn't reported a value yet.
+    let fallbackSymbol: String
+    let select: (Option) -> Void
+
+    var body: some View {
+        Menu {
+            Picker(selection: selectionBinding) {
+                ForEach(options, id: \.self) { option in
+                    Label {
+                        Text(name(option))
+                    } icon: {
+                        Image(systemName: symbolName(option))
+                    }
+                    .tag(Optional(option))
+                }
+            } label: {
+                Text(title)
+            }
+            .pickerStyle(.inline)
+        } label: {
+            cardLabel
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
+        .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 16))
+        .accessibilityLabel(Text(title))
+        .accessibilityValue(selection.map { Text(name($0)) } ?? Text("Unknown"))
+    }
+
+    private var cardLabel: some View {
+        HStack(spacing: 10) {
+            Image(systemName: selection.map(symbolName) ?? fallbackSymbol)
+                .font(.title3)
+                .foregroundStyle(.tint)
+                .frame(width: 24)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(selection.map(name) ?? "Unknown")
+                    .font(.callout.weight(.medium))
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 0)
+            Image(systemName: "chevron.up.chevron.down")
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(maxWidth: .infinity)
+        .contentShape(.rect)
+    }
+
+    private var selectionBinding: Binding<Option?> {
+        Binding(
+            get: { selection },
+            set: { newValue in
+                if let newValue, newValue != selection {
+                    select(newValue)
+                }
+            }
+        )
+    }
+}

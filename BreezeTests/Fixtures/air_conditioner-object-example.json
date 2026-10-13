@@ -1,0 +1,27 @@
+{
+  "airConJobMode": {
+    "currentJobMode": "FAN"
+  },
+  "airFlow": {
+    "windStrength": "HIGH",
+    "windStep": 5
+  },
+  "operation": {
+    "airConOperationMode": "POWER_OFF"
+  },
+  "powerSave": {
+    "powerSaveEnabled": false
+  },
+  "temperature": {
+    "currentTemperature": 27,
+    "targetTemperature": 24.5,
+    "unit": "C"
+  },
+  "timer": {
+    "absoluteStopTimer": "UNSET",
+    "absoluteStartTimer": "UNSET"
+  },
+  "sleepTimer": {
+    "relativeStopTimer": "UNSET"
+  }
+}

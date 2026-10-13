@@ -1,0 +1,324 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%@" : {
+
+    },
+    "%@, %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$@"
+          }
+        }
+      }
+    },
+    "%@, off" : {
+
+    },
+    "%@°" : {
+
+    },
+    "A token is saved in your Keychain." : {
+
+    },
+    "AC offline" : {
+
+    },
+    "Account" : {
+
+    },
+    "Air Conditioner" : {
+
+    },
+    "Air conditioner" : {
+
+    },
+    "Allow Breeze in System Settings to finish." : {
+
+    },
+    "Breeze" : {
+
+    },
+    "Breeze controls your LG air conditioner through LG ThinQ. Create a personal access token, then paste it in Settings." : {
+
+    },
+    "Breeze couldn't be added to your login items: %@" : {
+
+    },
+    "Breeze couldn't be removed from your login items: %@" : {
+
+    },
+    "Breeze couldn't read the token from the Keychain." : {
+
+    },
+    "Breeze couldn't save the token to the Keychain." : {
+
+    },
+    "Breeze isn't allowed to read its Keychain item. Allow access when prompted, or delete the “com.vinicius.Breeze” item in Keychain Access and save the token again." : {
+
+    },
+    "Breeze stops talking to your air conditioner until you save a new token." : {
+
+    },
+    "Breeze, target %@" : {
+
+    },
+    "Can't reach LG ThinQ. Check your internet connection." : {
+
+    },
+    "Check that the air conditioner is plugged in and connected to Wi-Fi." : {
+
+    },
+    "Check the AC every" : {
+
+    },
+    "Connected, but this account has no air conditioner." : {
+
+    },
+    "Connected. %lld air conditioners found." : {
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Connected. %lld air conditioner found."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Connected. %lld air conditioners found."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Connecting to LG ThinQ…" : {
+
+    },
+    "Country" : {
+
+    },
+    "Create a token at connect-pat.lgthinq.com" : {
+
+    },
+    "Decrease temperature" : {
+
+    },
+    "Device" : {
+
+    },
+    "Dismiss" : {
+
+    },
+    "Eco Mode" : {
+
+    },
+    "Fan" : {
+
+    },
+    "General" : {
+
+    },
+    "Increase temperature" : {
+
+    },
+    "LG ThinQ Token" : {
+
+    },
+    "LG ThinQ returned HTTP status %lld." : {
+
+    },
+    "LG ThinQ returned error %@ (%@)." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "LG ThinQ returned error %1$@ (%2$@)."
+          }
+        }
+      }
+    },
+    "LG ThinQ sent a response Breeze doesn't understand." : {
+
+    },
+    "LG is rate limiting this account. Try again later." : {
+
+    },
+    "LG limits how many requests an account may make per hour. Longer intervals leave more room for your commands." : {
+
+    },
+    "LG limits how often Breeze may ask. Retrying at %@." : {
+
+    },
+    "LG rejected the saved token. Create a new one and paste it in Settings." : {
+
+    },
+    "LG rejected this token." : {
+
+    },
+    "Launch at login" : {
+
+    },
+    "Limits the compressor to save energy." : {
+
+    },
+    "Mode" : {
+
+    },
+    "More" : {
+
+    },
+    "No air conditioner was found in this ThinQ account." : {
+
+    },
+    "No air conditioners loaded yet." : {
+
+    },
+    "Off" : {
+
+    },
+    "On" : {
+
+    },
+    "Open Login Items Settings" : {
+
+    },
+    "Open Settings…" : {
+
+    },
+    "Paste a new token to replace the saved one" : {
+
+    },
+    "Paste a token first." : {
+
+    },
+    "Paste your token" : {
+
+    },
+    "Personal access token" : {
+
+    },
+    "Power" : {
+
+    },
+    "Quit Breeze" : {
+
+    },
+    "Rate limited" : {
+
+    },
+    "Rate limited, retrying at %@" : {
+
+    },
+    "Refresh" : {
+
+    },
+    "Refresh List" : {
+
+    },
+    "Refresh, Settings and Quit" : {
+
+    },
+    "Remove Token" : {
+
+    },
+    "Remove Token…" : {
+
+    },
+    "Remove the saved token?" : {
+
+    },
+    "Room %@" : {
+
+    },
+    "Save" : {
+
+    },
+    "Save a token in the Account tab to see your air conditioners." : {
+
+    },
+    "Set up Breeze" : {
+
+    },
+    "Settings…" : {
+
+    },
+    "Show temperature in menu bar" : {
+
+    },
+    "Something went wrong" : {
+
+    },
+    "Synced %@" : {
+
+    },
+    "Syncing…" : {
+
+    },
+    "Target temperature" : {
+
+    },
+    "Test Connection" : {
+
+    },
+    "The country your ThinQ account is registered in. It selects LG's regional server." : {
+
+    },
+    "The selected device id is invalid." : {
+
+    },
+    "The target temperature can't be changed in this mode." : {
+
+    },
+    "The token is stored in your Keychain." : {
+
+    },
+    "This ThinQ account isn't registered in the selected country." : {
+
+    },
+    "This account isn't registered in the selected country." : {
+
+    },
+    "This air conditioner doesn't support that setting." : {
+
+    },
+    "This air conditioner's profile isn't supported by Breeze." : {
+
+    },
+    "Token invalid" : {
+
+    },
+    "Token invalid — open Settings" : {
+
+    },
+    "Try Again" : {
+
+    },
+    "Turn off" : {
+
+    },
+    "Turn on" : {
+
+    },
+    "Turns the air conditioner off." : {
+
+    },
+    "Turns the air conditioner on." : {
+
+    },
+    "Unknown" : {
+
+    },
+    "Uses the token typed above, or the saved one. Nothing is saved." : {
+
+    }
+  },
+  "version" : "1.0"
+}

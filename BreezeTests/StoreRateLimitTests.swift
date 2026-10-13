@@ -25,7 +25,7 @@ extension StoreTests {
             await store.start()
             await clock.advance(by: .seconds(100))
             await harness.api.enqueueControl(error: Self.rateLimited)
-            store.send(.fanSpeed(.low))
+            store.send(.fan(.level(1)))
             await settle()
 
             // Back-off doubled once: 120 → 240 s from the POST at t=100.

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The Settings window: Account, Device and General tabs at a fixed size.
+/// The Settings window: Account, Device, General and Energy tabs at a fixed size.
 struct SettingsView: View {
     static let size = CGSize(width: 500, height: 440)
 
@@ -14,6 +14,9 @@ struct SettingsView: View {
             }
             Tab("General", systemImage: "gearshape") {
                 GeneralSettingsView()
+            }
+            Tab("Energy", systemImage: "bolt") {
+                EnergySettingsView()
             }
         }
         .frame(width: Self.size.width, height: Self.size.height)

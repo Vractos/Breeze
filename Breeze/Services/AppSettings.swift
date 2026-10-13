@@ -17,6 +17,11 @@ final class AppSettings {
     private static let selectedDeviceIDKey = "selectedDeviceID"
     private static let pollIntervalSecondsKey = "pollIntervalSeconds"
     private static let showTemperatureInMenuBarKey = "showTemperatureInMenuBar"
+    private static let deviceNicknamesKey = "deviceNicknames"
+    private static let energyPricePerKWhKey = "energyPricePerKWh"
+    /// Prices are stored as locale-independent text ("0.85"), so a locale change never misreads
+    /// them and `Decimal` keeps its exact value.
+    private static let priceStorageLocale = Locale(identifier: "en_US_POSIX")
 
     @ObservationIgnored private let defaults: UserDefaults
 
@@ -43,6 +48,25 @@ final class AppSettings {
         didSet { defaults.set(showTemperatureInMenuBar, forKey: Self.showTemperatureInMenuBarKey) }
     }
 
+    /// Local names by device id, stored as typed; `DeviceLabel` trims
+    /// them and ignores blank ones. Never sent to LG. Change through `setNickname(_:for:)`.
+    private(set) var deviceNicknames: [String: String] {
+        didSet { defaults.set(deviceNicknames, forKey: Self.deviceNicknamesKey) }
+    }
+
+    /// Settings › Energy's optional price per kWh in the locale's currency;
+    /// `nil` (the default) shows energy only. Never negative: change it through
+    /// `setEnergyPricePerKWh(_:)`.
+    private(set) var energyPricePerKWh: Decimal? {
+        didSet {
+            if let energyPricePerKWh {
+                defaults.set(energyPricePerKWh.description, forKey: Self.energyPricePerKWhKey)
+            } else {
+                defaults.removeObject(forKey: Self.energyPricePerKWhKey)
+            }
+        }
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         countryCode = defaults.string(forKey: Self.countryCodeKey) ?? Self.defaultCountryCode
@@ -50,6 +74,38 @@ final class AppSettings {
         selectedDeviceID = defaults.string(forKey: Self.selectedDeviceIDKey)
         pollIntervalSeconds = defaults.object(forKey: Self.pollIntervalSecondsKey) as? Int ?? Self.defaultPollIntervalSeconds
         showTemperatureInMenuBar = defaults.object(forKey: Self.showTemperatureInMenuBarKey) as? Bool ?? true
+        deviceNicknames = defaults.dictionary(forKey: Self.deviceNicknamesKey) as? [String: String] ?? [:]
+        energyPricePerKWh = defaults.string(forKey: Self.energyPricePerKWhKey)
+            .flatMap { Decimal(string: $0, locale: Self.priceStorageLocale) }
+            .flatMap { Self.isValidPrice($0) ? $0 : nil }
+    }
+
+    /// Sets the price, or clears it with `nil`. A negative (or NaN) price is rejected: the stored
+    /// price stays as it was and this returns `false`.
+    @discardableResult
+    func setEnergyPricePerKWh(_ price: Decimal?) -> Bool {
+        if let price, !Self.isValidPrice(price) { return false }
+        energyPricePerKWh = price
+        return true
+    }
+
+    private static func isValidPrice(_ price: Decimal) -> Bool {
+        !price.isNaN && price >= 0
+    }
+
+    /// The nickname as typed, or "" when there is none.
+    func nickname(for deviceID: String) -> String {
+        deviceNicknames[deviceID] ?? ""
+    }
+
+    /// Stores `nickname` untrimmed: Settings writes on every keystroke, and trimming here would
+    /// eat the space in "Beach house" while it is being typed. A blank nickname removes the entry.
+    func setNickname(_ nickname: String, for deviceID: String) {
+        if nickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            deviceNicknames[deviceID] = nil
+        } else {
+            deviceNicknames[deviceID] = nickname
+        }
     }
 
     /// `pollIntervalSeconds` clamped to `pollIntervalRange`.

@@ -4,6 +4,9 @@
     "%@" : {
 
     },
+    "%@ left" : {
+
+    },
     "%@, %@" : {
       "localizations" : {
         "en" : {
@@ -14,10 +17,26 @@
         }
       }
     },
+    "%@, estimated cost %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, estimated cost %2$@"
+          }
+        }
+      }
+    },
     "%@, off" : {
 
     },
     "%@°" : {
+
+    },
+    "12 Months" : {
+
+    },
+    "30 Days" : {
 
     },
     "A token is saved in your Keychain." : {
@@ -29,16 +48,22 @@
     "Account" : {
 
     },
-    "Air Conditioner" : {
+    "Air Conditioners" : {
 
     },
     "Air conditioner" : {
+
+    },
+    "Airflow" : {
 
     },
     "Allow Breeze in System Settings to finish." : {
 
     },
     "Breeze" : {
+
+    },
+    "Breeze controls this air conditioner." : {
 
     },
     "Breeze controls your LG air conditioner through LG ThinQ. Create a personal access token, then paste it in Settings." : {
@@ -57,6 +82,9 @@
 
     },
     "Breeze isn't allowed to read its Keychain item. Allow access when prompted, or delete the “com.vinicius.Breeze” item in Keychain Access and save the token again." : {
+
+    },
+    "Breeze multiplies the kWh by this price. It's only an estimate: LG reports energy, not money, and tariffs, taxes and fees aren't included." : {
 
     },
     "Breeze stops talking to your air conditioner until you save a new token." : {
@@ -102,10 +130,16 @@
     "Connecting to LG ThinQ…" : {
 
     },
+    "Control this air conditioner" : {
+
+    },
     "Country" : {
 
     },
     "Create a token at connect-pat.lgthinq.com" : {
+
+    },
+    "Date" : {
 
     },
     "Decrease temperature" : {
@@ -117,10 +151,31 @@
     "Dismiss" : {
 
     },
+    "Display Light" : {
+
+    },
     "Eco Mode" : {
 
     },
+    "Energy" : {
+
+    },
+    "Energy (kWh)" : {
+
+    },
+    "Energy Use" : {
+
+    },
+    "Est. %@" : {
+
+    },
+    "Estimated Cost" : {
+
+    },
     "Fan" : {
+
+    },
+    "Fixed" : {
 
     },
     "General" : {
@@ -130,6 +185,9 @@
 
     },
     "LG ThinQ Token" : {
+
+    },
+    "LG ThinQ is limiting requests right now. Try again later." : {
 
     },
     "LG ThinQ returned HTTP status %lld." : {
@@ -163,10 +221,25 @@
     "LG rejected this token." : {
 
     },
+    "Last month" : {
+
+    },
     "Launch at login" : {
 
     },
+    "Level %lld" : {
+
+    },
     "Limits the compressor to save energy." : {
+
+    },
+    "Loading" : {
+
+    },
+    "Loading energy use…" : {
+
+    },
+    "Makes Breeze control this air conditioner." : {
 
     },
     "Mode" : {
@@ -175,16 +248,52 @@
     "More" : {
 
     },
+    "Name" : {
+
+    },
+    "Name for %@" : {
+
+    },
+    "Names stay on this Mac and are never sent to LG. Leave a name empty to use the one from the LG ThinQ app." : {
+
+    },
     "No air conditioner was found in this ThinQ account." : {
 
     },
     "No air conditioners loaded yet." : {
 
     },
+    "No data" : {
+
+    },
+    "No energy data for this period." : {
+
+    },
+    "No energy data loaded yet." : {
+
+    },
+    "None" : {
+
+    },
     "Off" : {
 
     },
+    "Off · %@" : {
+
+    },
+    "Off, room temperature %@" : {
+
+    },
+    "Offline" : {
+
+    },
     "On" : {
+
+    },
+    "On · %@" : {
+
+    },
+    "On, room temperature %@" : {
 
     },
     "Open Login Items Settings" : {
@@ -202,10 +311,16 @@
     "Paste your token" : {
 
     },
+    "Period" : {
+
+    },
     "Personal access token" : {
 
     },
     "Power" : {
+
+    },
+    "Price per kWh" : {
 
     },
     "Quit Breeze" : {
@@ -241,6 +356,9 @@
     "Save" : {
 
     },
+    "Save a token in the Account tab to see energy use." : {
+
+    },
     "Save a token in the Account tab to see your air conditioners." : {
 
     },
@@ -253,7 +371,19 @@
     "Show temperature in menu bar" : {
 
     },
+    "Sleep" : {
+
+    },
     "Something went wrong" : {
+
+    },
+    "Swing" : {
+
+    },
+    "Switch air conditioner" : {
+
+    },
+    "Switches to another air conditioner." : {
 
     },
     "Synced %@" : {
@@ -271,6 +401,9 @@
     "The country your ThinQ account is registered in. It selects LG's regional server." : {
 
     },
+    "The price can't be negative." : {
+
+    },
     "The selected device id is invalid." : {
 
     },
@@ -286,10 +419,19 @@
     "This account isn't registered in the selected country." : {
 
     },
+    "This air conditioner doesn't report energy use to LG ThinQ, so Breeze can't show it." : {
+
+    },
     "This air conditioner doesn't support that setting." : {
 
     },
     "This air conditioner's profile isn't supported by Breeze." : {
+
+    },
+    "This month" : {
+
+    },
+    "Today" : {
 
     },
     "Token invalid" : {
@@ -313,10 +455,25 @@
     "Turns the air conditioner on." : {
 
     },
+    "Turns the lights on the air conditioner's front on or off." : {
+
+    },
+    "Turns the up-and-down swing on or off." : {
+
+    },
+    "Unavailable" : {
+
+    },
     "Unknown" : {
 
     },
+    "Updated %@" : {
+
+    },
     "Uses the token typed above, or the saved one. Nothing is saved." : {
+
+    },
+    "per kWh" : {
 
     }
   },

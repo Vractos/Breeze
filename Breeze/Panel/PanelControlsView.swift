@@ -1,8 +1,10 @@
 import SwiftUI
 import ThinQKit
 
-/// The AC's controls. Everything except the power button is disabled and
-/// dimmed while the AC is off; the change animates with a spring.
+/// The AC's controls: the header with the power button, the temperature, Eco, the display light
+/// and the card grid.
+/// Everything except the power button is disabled and dimmed while the AC is off; the change
+/// animates with a spring.
 struct PanelControlsView: View {
     let snapshot: AirConditionerSnapshot
     let capabilities: AirConditionerCapabilities
@@ -24,12 +26,14 @@ struct PanelControlsView: View {
     var body: some View {
         VStack(spacing: 14) {
             PanelHeader(
-                deviceName: store.device?.alias,
+                device: store.deviceLabel,
+                devices: store.deviceLabels,
                 roomTemperature: roomTemperature,
                 isOn: isOn,
+                canTogglePower: acceptsCommands,
+                selectDevice: { id in Task { await store.selectDevice(id: id) } },
                 togglePower: { store.send(.power(snapshot.power.toggled)) }
             )
-            .disabled(!acceptsCommands)
 
             VStack(spacing: 14) {
                 TemperatureHero(target: displayedTarget, mode: snapshot.mode, isOn: isOn, isAnimating: isVisible)
@@ -38,8 +42,18 @@ struct PanelControlsView: View {
                         store.send(.powerSave(enabled))
                     }
                 }
+                if capabilities.hasDisplayLight {
+                    DisplayLightToggleRow(isOn: snapshot.displayLight ?? false) { isOn in
+                        store.send(.displayLight(isOn))
+                    }
+                }
                 temperatureControl
-                modeAndFanCards
+                ControlCardGrid(
+                    snapshot: snapshot,
+                    capabilities: capabilities,
+                    isAnimating: isVisible,
+                    send: { store.send($0) }
+                )
             }
             .disabled(!isAdjustable)
             .opacity(isAdjustable ? 1 : 0.45)
@@ -56,38 +70,6 @@ struct PanelControlsView: View {
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
-        }
-    }
-
-    /// The mode and fan-speed pickers as two glass cards in one `GlassEffectContainer`, so
-    /// adjacent glass blends. Only the values the profile allows writing are
-    /// offered. Swing toggles are deferred (see the note there): `ACCommand` has no swing case yet.
-    private var modeAndFanCards: some View {
-        GlassEffectContainer(spacing: 12) {
-            HStack(spacing: 10) {
-                if !capabilities.modes.isEmpty {
-                    SettingMenuCard(
-                        title: "Mode",
-                        selection: snapshot.mode,
-                        options: capabilities.modes,
-                        name: \.displayName,
-                        symbolName: \.symbolName,
-                        fallbackSymbol: "slider.horizontal.3",
-                        select: { store.send(.mode($0)) }
-                    )
-                }
-                if !capabilities.fanSpeeds.isEmpty {
-                    SettingMenuCard(
-                        title: "Fan",
-                        selection: snapshot.fanSpeed,
-                        options: capabilities.fanSpeeds,
-                        name: \.displayName,
-                        symbolName: \.symbolName,
-                        fallbackSymbol: "fan",
-                        select: { store.send(.fanSpeed($0)) }
-                    )
-                }
-            }
         }
     }
 

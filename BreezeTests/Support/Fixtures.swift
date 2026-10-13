@@ -2,7 +2,7 @@ import Foundation
 @testable import Breeze
 import ThinQKit
 
-/// LG's official API examples, from BreezeTests/Fixtures.
+/// LG's official API examples and a real unit's dumps, from BreezeTests/Fixtures.
 enum Fixtures {
     struct MissingFixture: Error {
         let name: String
@@ -46,6 +46,17 @@ enum Fixtures {
         ])
     }
 
+    /// A real unit: fan Auto + levels 1–5 via `windStrengthDetail`, up/down
+    /// swing, display light, sleep timer; no Eco. Copied from ThinQKit's test fixtures.
+    static func realProfile() throws -> DeviceProfile {
+        try DeviceProfile(json: json("real-ac-profile"))
+    }
+
+    /// The real unit on in COOL, target 21, fan level 1, swing on, light off, no sleep timer.
+    static func realState() throws -> DeviceState {
+        try DeviceState(json: json("real-ac-state"))
+    }
+
     /// Power OFF, mode FAN, fan HIGH, current 27, target 24.5.
     static func offState() throws -> DeviceState {
         try DeviceState(json: json("air_conditioner-object-example"))
@@ -72,6 +83,29 @@ enum Fixtures {
         deviceType: DeviceSummary.airConditionerType,
         modelName: "S4-W12JA3AA",
         alias: "Bedroom"
+    )
+
+    /// Shaped like a real account: two ACs aliased "Ar-condicionado" (in different LG homes) and
+    /// "Ar Quarto".
+    static let arCondicionadoSala = DeviceSummary(
+        id: "0f9b6c1e8d2a4b7c9e3f5a6d1c8b0001",
+        deviceType: DeviceSummary.airConditionerType,
+        modelName: "RAC_0B0001_WW",
+        alias: "Ar-condicionado"
+    )
+
+    static let arCondicionadoPraia = DeviceSummary(
+        id: "7a3e5c9b1d4f6a8c2e0b9d7f5a3ca3f2",
+        deviceType: DeviceSummary.airConditionerType,
+        modelName: "RAC_056905_WW",
+        alias: "Ar-condicionado"
+    )
+
+    static let arQuarto = DeviceSummary(
+        id: "c4d2e8f0a6b1c3d5e7f9a1b3c5d7e9f1",
+        deviceType: DeviceSummary.airConditionerType,
+        modelName: "RAC_056905_WW",
+        alias: "Ar Quarto"
     )
 
     static let washer = DeviceSummary(

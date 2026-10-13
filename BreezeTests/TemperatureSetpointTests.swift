@@ -12,12 +12,13 @@ struct TemperatureSetpointTests {
         AirConditionerCapabilities(
             powerOptions: [.on, .off],
             modes: [.cool, .heat, .fan],
-            fanSpeeds: [.low, .high],
-            fanSpeedKey: "windStrength",
+            fan: FanCapability(levelValues: ["LOW", "HIGH"], levelKey: "windStrength", autoKey: nil),
             temperature: TemperatureCapability(unit: unit, currentReadable: true, shape: .flat, writableTargets: targets),
             hasPowerSave: false,
             hasVerticalSwing: false,
-            hasHorizontalSwing: false
+            hasHorizontalSwing: false,
+            hasDisplayLight: false,
+            hasSleepTimer: false
         )
     }
 

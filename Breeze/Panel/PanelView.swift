@@ -56,7 +56,7 @@ struct PanelView: View {
             // so the `.opacity(0.45)` that PanelControlsView applies while the AC is off no longer
             // dims the hero card and the −/+ buttons (checked in the "Off" preview). The gain for
             // ~6 static glass views in a small popover isn't worth losing the disabled look;
-            // the mode/fan cards keep their own container so those two cards blend.
+            // the setting cards keep their own container (`ControlCardGrid`) so they blend.
             controlsContent
         }
     }
@@ -74,6 +74,16 @@ struct PanelView: View {
                     onSliderEditingChanged: { isEditing in sliderEditingChanged(isEditing) }
                 )
             } else {
+                if let device = switchableDeviceWithoutState {
+                    HStack {
+                        PanelDeviceSwitcher(
+                            device: device,
+                            devices: store.deviceLabels,
+                            selectDevice: selectDevice
+                        )
+                        Spacer(minLength: 0)
+                    }
+                }
                 PanelMessageView(
                     phase: store.phase,
                     retry: { retry() },
@@ -100,6 +110,18 @@ struct PanelView: View {
             openSettings: { openSettingsInFront() },
             quit: { quit() }
         )
+    }
+
+    /// The header (and its device menu) needs a snapshot. Without one — e.g. the saved AC was
+    /// offline at load — the device switch stands on its own above the message, so another AC
+    /// stays one click away instead of only in Settings › Device. Not while setup or a new
+    /// token is what is needed.
+    private var switchableDeviceWithoutState: DeviceLabel? {
+        guard store.deviceLabels.count > 1, let device = store.deviceLabel else { return nil }
+        switch store.phase {
+        case .ready, .rateLimited, .error, .loadingProfile, .offline: return device
+        case .needsSetup, .tokenInvalid: return nil
+        }
     }
 
     /// Commands make sense while connected; offline / token-invalid / loading show the last state
@@ -135,6 +157,10 @@ struct PanelView: View {
 
     private func refresh() {
         Task { await store.refresh() }
+    }
+
+    private func selectDevice(_ id: String) {
+        Task { await store.selectDevice(id: id) }
     }
 
     /// From a message view (no snapshot yet): restart the whole load, which also clears a halt
@@ -218,11 +244,27 @@ struct PanelView: View {
     PanelView()
 }
 
+#Preview("Fan Auto, swing and light off", traits: .modifier(PreviewScenarioModifier(.fanAuto))) {
+    PanelView()
+}
+
+#Preview("Fan level 3", traits: .modifier(PreviewScenarioModifier(.fanLevel3))) {
+    PanelView()
+}
+
+#Preview("Sleep timer running", traits: .modifier(PreviewScenarioModifier(.sleepSet))) {
+    PanelView()
+}
+
 #Preview("Needs setup", traits: .modifier(PreviewScenarioModifier(.needsSetup))) {
     PanelView()
 }
 
 #Preview("Offline", traits: .modifier(PreviewScenarioModifier(.offline))) {
+    PanelView()
+}
+
+#Preview("Offline at load, two devices", traits: .modifier(PreviewScenarioModifier(.offlineAtLoad))) {
     PanelView()
 }
 

@@ -27,6 +27,10 @@ final class ACStore {
     static let panelRefreshThreshold: Duration = .seconds(15)
     /// 2209 DEVICE_RESPONSE_DELAY: fetch once more after this long.
     static let deviceResponseDelayRetry: Duration = .seconds(3)
+    /// Opening Settings › Energy fetches only if the last energy fetch is older than this. LG's
+    /// numbers move slowly (Home Assistant refreshes "today" hourly), and each fetch costs two
+    /// requests of the shared quota.
+    static let energyRefreshThreshold: Duration = .seconds(3600)
 
     // MARK: - Observable state
 
@@ -47,6 +51,15 @@ final class ACStore {
     /// The last command failure that did not change `phase` (e.g. LG rejected the value).
     /// Cleared by the next `send(_:)` or `dismissCommandFailure()`.
     private(set) var commandFailureMessage: String?
+    /// The selected AC's energy use for Settings › Energy; `nil` until fetched. Kept while a
+    /// refresh runs or fails; dropped when the device changes.
+    private(set) var energy: EnergySummary?
+    private(set) var isLoadingEnergy = false
+    /// Why the last energy fetch failed; cleared by the next successful one. Energy failures
+    /// never change `phase`.
+    private(set) var energyFailureMessage: String?
+    /// ACs whose energy profile said they report no energy, remembered for this run of the app.
+    private(set) var energyUnsupportedDeviceIDs: Set<String> = []
 
     // MARK: - Dependencies
 
@@ -54,6 +67,9 @@ final class ACStore {
     @ObservationIgnored private let tokenStore: any TokenStore
     @ObservationIgnored private let settings: AppSettings
     @ObservationIgnored private let clock: any StoreClock
+    /// LG's energy dates are Gregorian days and months in the user's time zone
+    /// (`EnergySummary.calendar()`).
+    @ObservationIgnored private let calendar: Calendar
     @ObservationIgnored private let logger = Logger(subsystem: "com.vinicius.Breeze", category: "store")
 
     // MARK: - Session (reset by stop())
@@ -67,13 +83,21 @@ final class ACStore {
     @ObservationIgnored private var commandContinuation: AsyncStream<QueuedCommand>.Continuation?
     @ObservationIgnored private var postBurstRefreshTask: Task<Void, Never>?
     @ObservationIgnored private var deviceDelayRetryTask: Task<Void, Never>?
+    @ObservationIgnored private var energyTask: Task<Void, Never>?
     /// Set when polling must wait for the user (token invalid, no AC, unsupported profile/country).
-    @ObservationIgnored private var isPollingHalted = false
+    /// Observed (like `rateLimitedUntil`) so `canRefreshEnergy` updates the Energy tab.
+    private var isPollingHalted = false
     @ObservationIgnored private var schedule = PollSchedule()
     /// End of the current 1306 back-off. No automatic request goes out before it.
-    @ObservationIgnored private var rateLimitedUntil: Date?
+    private var rateLimitedUntil: Date?
     /// When the last fetch finished, successfully or not (limits panel-open refreshes).
     @ObservationIgnored private var lastSyncAttempt: Date?
+    /// When the last energy fetch for the selected device finished, successfully or not (the
+    /// 1 h gate, so a failing Energy API isn't asked again on every tab switch).
+    @ObservationIgnored private var lastEnergyAttempt: Date?
+    /// The energy property to request per device (`energyUsage` on ACs), so the energy profile
+    /// is asked once per device and run of the app.
+    @ObservationIgnored private var energyPropertyByDevice: [String: String] = [:]
 
     // MARK: - Device state model
 
@@ -83,20 +107,26 @@ final class ACStore {
     @ObservationIgnored private var optimisticCommands: [OptimisticCommand] = []
     /// Source of `OptimisticCommand.id`.
     @ObservationIgnored private var nextOptimisticID = 0
-    /// `.targetTemperature` commands still queued per setpoint, for coalescing slider spam.
+    /// `.targetTemperature` / `.sleepTimer` commands still queued per slot, for coalescing slider
+    /// spam and repeated sleep picks.
     @ObservationIgnored private var queuedSetpoints: [SetpointSlot: Int] = [:]
+    /// The last sleep-timer write LG accepted, applied under `optimisticCommands` until the
+    /// lagging state catches up (`HeldSleepTimer`).
+    @ObservationIgnored private var heldSleepTimer: HeldSleepTimer?
     @ObservationIgnored private var lastPostAt: Date?
 
     init(
         makeClient: @escaping ClientFactory,
         tokenStore: any TokenStore,
         settings: AppSettings,
-        clock: any StoreClock
+        clock: any StoreClock,
+        calendar: Calendar = EnergySummary.calendar()
     ) {
         self.makeClient = makeClient
         self.tokenStore = tokenStore
         self.settings = settings
         self.clock = clock
+        self.calendar = calendar
     }
 
     // MARK: - Lifecycle
@@ -126,11 +156,14 @@ final class ACStore {
         refreshTask?.cancel()
         cancelPostBurstRefresh()
         deviceDelayRetryTask?.cancel()
+        energyTask?.cancel()
         commandTask?.cancel()
         commandContinuation?.finish()
         pollTask = nil
         refreshTask = nil
         deviceDelayRetryTask = nil
+        energyTask = nil
+        isLoadingEnergy = false
         commandTask = nil
         commandContinuation = nil
         client = nil
@@ -139,6 +172,7 @@ final class ACStore {
         pendingCommands = 0
         queuedSetpoints.removeAll()
         optimisticCommands.removeAll()
+        heldSleepTimer = nil
         recomputeSnapshot()
     }
 
@@ -154,6 +188,9 @@ final class ACStore {
         lastSyncAttempt = nil
         rateLimitedUntil = nil
         commandFailureMessage = nil
+        energy = nil
+        energyFailureMessage = nil
+        lastEnergyAttempt = nil
         schedule.recordSuccess()
         // No phase reset needed: `start()` sets the phase before its first suspension.
         await start()
@@ -213,7 +250,8 @@ final class ACStore {
 
     /// Applies `command` to the snapshot immediately and queues it for the AC. Invalid commands
     /// (e.g. a temperature outside the model's range) are rejected here without touching state;
-    /// a setpoint equal to the current one is ignored (it would only spend quota).
+    /// a setpoint equal to the current one, or a sleep-timer cancel while the AC is off, is
+    /// ignored (it would only spend quota).
     func send(_ command: ACCommand) {
         guard let caps = capabilities, let current = snapshot, let continuation = commandContinuation, !isPollingHalted else {
             logger.debug("Ignoring command \(String(describing: command), privacy: .public): store not ready")
@@ -228,6 +266,10 @@ final class ACStore {
         }
         if Self.isNoOpSetpoint(command, current: current, caps: caps) {
             logger.debug("Ignoring command \(String(describing: command), privacy: .public): already the target")
+            return
+        }
+        if Self.isSkippedSleepTimerCancel(command, power: current.power) {
+            logger.debug("Ignoring command \(String(describing: command), privacy: .public): the AC is off")
             return
         }
 
@@ -300,6 +342,177 @@ final class ACStore {
     @discardableResult
     func loadDevices() async -> ConnectionTestResult {
         await testConnection(token: nil)
+    }
+
+    /// `availableDevices` as the UI names them: local nicknames first, colliding names marked.
+    /// Reads `AppSettings.deviceNicknames`, so views using it update
+    /// when a nickname changes.
+    var deviceLabels: [DeviceLabel] {
+        DeviceLabel.labels(for: availableDevices, nicknames: settings.deviceNicknames)
+    }
+
+    /// The selected device's label; `nil` before a device is chosen.
+    var deviceLabel: DeviceLabel? {
+        guard let device else { return nil }
+        if let label = deviceLabels.first(where: { $0.id == device.id }) {
+            return label
+        }
+        // `availableDevices` no longer lists it (e.g. a list refresh dropped it); name it alone.
+        return DeviceLabel.labels(for: [device], nicknames: settings.deviceNicknames).first
+    }
+
+    /// What `deviceID` reports right now, for Settings › Device's "which one is this?" preview.
+    /// Never touches the selected device's snapshot. The selected device answers from that
+    /// snapshot (no request); any other AC costs one state GET. Nothing is sent without a
+    /// client, with a rejected token or inside a 1306 back-off; a 1306 here opens the back-off
+    /// like any other request (the quota is per account), other failures leave `phase` alone.
+    /// An answer that lands after a device switch is still returned: it never touches the
+    /// store, and the Device tab doesn't ask again (its task is keyed on the unchanged list).
+    func statePreview(for deviceID: String) async -> DevicePreview {
+        if deviceID == device?.id, let snapshot {
+            return phase == .offline
+                ? .offline
+                : .reported(power: snapshot.power, roomTemperature: snapshot.currentTemperature)
+        }
+        guard let client, phase != .tokenInvalid, !isInsideRateLimitWindow else { return .unavailable }
+
+        let session = self.session
+        do throws(ThinQError) {
+            let state = try await client.state(deviceID: deviceID)
+            return DevicePreview(state: state)
+        } catch {
+            // After a session change or a closed tab (cancelled task) the error is still shown
+            // as is, but it must not open a back-off in the new session.
+            if isCurrent(session), !Task.isCancelled {
+                logger.error("State preview failed: \(error.description, privacy: .public)")
+                if error.isRateLimited, !isPollingHalted {
+                    recordRateLimit()
+                }
+            }
+            return error.isDeviceOffline ? .offline : .unavailable
+        }
+    }
+
+    // MARK: - Energy
+
+    /// Whether the selected AC's energy profile said it reports no energy.
+    var isEnergyUnsupported: Bool {
+        guard let device else { return false }
+        return energyUnsupportedDeviceIDs.contains(device.id)
+    }
+
+    /// Whether `refreshEnergy()` would ask LG now (Settings › Energy's Refresh button).
+    var canRefreshEnergy: Bool {
+        client != nil && device != nil && !isPollingHalted && !isEnergyUnsupported && !isInsideRateLimitWindow
+    }
+
+    /// Settings › Energy appeared: fetches when the last energy fetch for this device is older
+    /// than `energyRefreshThreshold`, or the summary is from an earlier day (its "Today" and,
+    /// on the 1st, its month tiles would show the previous period). The only automatic energy
+    /// fetch — never at launch or in the poll loop.
+    func energyTabDidAppear() async {
+        let now = clock.now
+        let isSummaryFromToday = energy.map { calendar.isDate($0.fetchedAt, inSameDayAs: now) } ?? true
+        if let lastEnergyAttempt, isSummaryFromToday,
+           now.timeIntervalSince(lastEnergyAttempt) < Self.energyRefreshThreshold.timeInterval {
+            return
+        }
+        await refreshEnergy()
+    }
+
+    /// Fetches the selected AC's energy use now: the energy profile (once per device), then
+    /// MONTHLY for the last 12 months and DAILY for the last 30 days. Concurrent calls share one
+    /// fetch, which keeps running when the tab closes (its result is cached). Nothing is sent
+    /// without a device, with a halted store, for an unsupported device or inside a 1306
+    /// back-off. Failures, a 1306 included, only set `energyFailureMessage`: they never change
+    /// `phase`.
+    func refreshEnergy() async {
+        if let energyTask {
+            await energyTask.value
+            return
+        }
+        guard canRefreshEnergy, let client, let device else { return }
+
+        let session = self.session
+        let task = Task {
+            await self.loadEnergy(client: client, deviceID: device.id, session: session)
+            if self.isCurrent(session) {
+                self.energyTask = nil
+            }
+        }
+        energyTask = task
+        await task.value
+    }
+
+    private func loadEnergy(client: any ThinQAPI, deviceID: String, session: Int) async {
+        // Gotcha: this task starts after `refreshEnergy()` created it, so a `stop()` may already
+        // have run; setting the flag then would leave it stuck for the new session.
+        guard isCurrent(session) else { return }
+        isLoadingEnergy = true
+        defer {
+            if isCurrent(session) {
+                isLoadingEnergy = false
+                lastEnergyAttempt = clock.now
+            }
+        }
+
+        do throws(ThinQError) {
+            guard let property = try await energyProperty(client: client, deviceID: deviceID, session: session) else { return }
+            let now = clock.now
+            let monthRange = EnergySummary.monthRange(endingAt: now, calendar: calendar)
+            let months = try await client.energyUsage(
+                deviceID: deviceID, property: property, period: .monthly, from: monthRange.from, to: monthRange.to
+            )
+            guard isCurrent(session) else { return }
+            let dayRange = EnergySummary.dayRange(endingAt: now, calendar: calendar)
+            let days = try await client.energyUsage(
+                deviceID: deviceID, property: property, period: .daily, from: dayRange.from, to: dayRange.to
+            )
+            guard isCurrent(session) else { return }
+            energy = EnergySummary(months: months, days: days, fetchedAt: now, calendar: calendar)
+            energyFailureMessage = nil
+        } catch {
+            guard isCurrent(session) else { return }
+            logger.error("Energy fetch failed: \(error.description, privacy: .public)")
+            if Self.meansEnergyUnsupported(error) {
+                energyUnsupportedDeviceIDs.insert(deviceID)
+            } else {
+                energyFailureMessage = Self.energyFailureMessage(for: error)
+            }
+        }
+    }
+
+    /// The cached property, else the one the energy profile lists. `nil` (after remembering the
+    /// device as unsupported) when the list is empty, or when the session ended meanwhile.
+    private func energyProperty(client: any ThinQAPI, deviceID: String, session: Int) async throws(ThinQError) -> String? {
+        if let cached = energyPropertyByDevice[deviceID] {
+            return cached
+        }
+        let properties = try await client.energyProperties(deviceID: deviceID)
+        guard isCurrent(session) else { return nil }
+        guard let property = EnergySummary.usageProperty(from: properties) else {
+            logger.notice("The energy profile lists no property; energy is unsupported on this device")
+            energyUnsupportedDeviceIDs.insert(deviceID)
+            return nil
+        }
+        energyPropertyByDevice[deviceID] = property
+        return property
+    }
+
+    /// 1220 property / 1221 product not supported, and 1307: the account's country works for
+    /// control (or polling would have halted), so here it means energy isn't offered there.
+    private static func meansEnergyUnsupported(_ error: ThinQError) -> Bool {
+        switch error.apiCode {
+        case .notSupportedFeature?, .notSupportedProduct?, .notSupportedCountry?: true
+        default: false
+        }
+    }
+
+    private static func energyFailureMessage(for error: ThinQError) -> String {
+        if error.isRateLimited {
+            return String(localized: "LG ThinQ is limiting requests right now. Try again later.")
+        }
+        return error.userMessage
     }
 
     /// Persists the choice and restarts with that device.
@@ -530,12 +743,14 @@ final class ACStore {
     /// catches up. Gotcha: this also covers a send *during* this fetch, because every fetch runs
     /// as `refreshTask`, and such a send keeps `pendingCommands > 0` or `postBurstRefreshTask`
     /// set until this fetch has landed (`schedulePostBurstRefresh` waits for `refreshTask`).
+    /// A held sleep timer outlives quiet fetches until the state agrees or it expires.
     private func didFetch(_ state: DeviceState) {
         fetchedState = state
         let isQuiet = pendingCommands == 0 && postBurstRefreshTask == nil
         if isQuiet {
             optimisticCommands.removeAll()
         }
+        releaseHeldSleepTimerIfSettled(by: state)
         recomputeSnapshot()
         lastSync = clock.now
         rateLimitedUntil = nil
@@ -553,13 +768,24 @@ final class ACStore {
         }
     }
 
-    /// `fetchedState` with `entries` applied; nil before the first fetch.
+    /// `fetchedState` with the held sleep timer and then `entries` applied; nil before the first
+    /// fetch.
     private func projectedSnapshot(applying entries: some Sequence<OptimisticCommand>) -> AirConditionerSnapshot? {
         guard let caps = capabilities, var state = fetchedState else { return nil }
+        heldSleepTimer?.command.apply(to: &state, caps: caps)
         for entry in entries {
             entry.command.apply(to: &state, caps: caps)
         }
         return AirConditionerSnapshot(state: state, capabilities: caps)
+    }
+
+    /// Drops the held sleep timer once `state` shows it or it has waited `HeldSleepTimer.stateLag`.
+    private func releaseHeldSleepTimerIfSettled(by state: DeviceState) {
+        guard let held = heldSleepTimer, let caps = capabilities else { return }
+        let reported = AirConditionerSnapshot(state: state, capabilities: caps).sleepTimer
+        if held.hasExpired(at: clock.now) || held.isReflected(by: reported, at: clock.now) {
+            heldSleepTimer = nil
+        }
     }
 
     /// Token / quota / offline errors change the phase whatever request hit them. Returns
@@ -655,6 +881,12 @@ final class ACStore {
         // Its implicit power-on entry stays (no flicker); the next executed command resolves it.
         if let slot = queued.setpointSlot, queuedSetpoints[slot, default: 0] > 0 {
             removeOptimistic(id: queued.id)
+            return
+        }
+        // The AC may have been switched off after the cancel was sent (a superseded sleep pick
+        // took its display-only power-on with it, or a fetch reported it off).
+        if Self.isSkippedSleepTimerCancel(queued.command, power: expectedPower(before: queued)) {
+            discard(queued)
             return
         }
 
@@ -754,6 +986,10 @@ final class ACStore {
             recomputeSnapshot()
             return false
         }
+        if case .sleepTimer(let minutes) = command {
+            // Replaces an earlier hold: LG's newest sleep write is the one that counts.
+            heldSleepTimer = HeldSleepTimer(minutes: minutes, postedAt: clock.now)
+        }
         return true
     }
 
@@ -843,15 +1079,24 @@ final class ACStore {
 
     private static func requiresPowerOn(_ command: ACCommand) -> Bool {
         switch command {
-        case .power: false
-        case .mode, .fanSpeed, .targetTemperature, .powerSave: true
+        // A cancel never turns the AC on: LG accepts it while off.
+        case .power, .sleepTimer(minutes: nil): false
+        case .mode, .fan, .targetTemperature, .powerSave, .verticalSwing, .horizontalSwing, .displayLight, .sleepTimer: true
         }
     }
 
-    /// The setpoint a `.targetTemperature` writes in `mode`; `nil` for other commands.
+    /// The setpoint a `.targetTemperature` writes in `mode`, or the one slot every `.sleepTimer`
+    /// shares (a later pick, cancel included, replaces a queued one); `nil` for other commands.
     private static func setpointSlot(for command: ACCommand, caps: AirConditionerCapabilities, mode: ACMode?) -> SetpointSlot? {
-        guard case .targetTemperature = command, let key = caps.temperature.writeKey(for: mode)?.key else { return nil }
-        return SetpointSlot(key: key, mode: mode)
+        switch command {
+        case .targetTemperature:
+            guard let key = caps.temperature.writeKey(for: mode)?.key else { return nil }
+            return SetpointSlot(key: key, mode: mode)
+        case .sleepTimer:
+            return SetpointSlot(key: "sleepTimer", mode: nil)
+        case .power, .mode, .fan, .powerSave, .verticalSwing, .horizontalSwing, .displayLight:
+            return nil
+        }
     }
 
     /// A setpoint equal to the (optimistic) target while the AC is on: e.g. ↑ at the range's
@@ -866,6 +1111,13 @@ final class ACStore {
     }
 
     private static let setpointTolerance = 1e-6
+
+    /// A sleep-timer cancel while the AC is off: an off AC runs no timer worth cancelling, and a
+    /// cancel never powers the AC on, so the POST is skipped.
+    private static func isSkippedSleepTimerCancel(_ command: ACCommand, power: ACPower?) -> Bool {
+        guard case .sleepTimer(minutes: nil) = command else { return false }
+        return power == .off
+    }
 
     private static func connectionTestResult(for error: ThinQError) -> ConnectionTestResult {
         if error.isTokenInvalid { return .tokenInvalid }

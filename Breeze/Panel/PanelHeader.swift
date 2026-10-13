@@ -1,19 +1,23 @@
 import SwiftUI
 
-/// Device name and room temperature on the left, the power button on the right.
+/// Device name and room temperature on the left, the power button on the right. With more than
+/// one AC on the account the name is a menu that switches between them (`PanelDeviceSwitcher`).
 struct PanelHeader: View {
-    let deviceName: String?
+    let device: DeviceLabel?
+    /// Every AC on the account; the switch menu appears only with two or more.
+    let devices: [DeviceLabel]
     let roomTemperature: Measurement<UnitTemperature>?
     let isOn: Bool
+    /// False while offline / token-invalid. Switching devices stays possible then.
+    let canTogglePower: Bool
+    let selectDevice: (String) -> Void
     let togglePower: () -> Void
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
-                if let deviceName, !deviceName.isEmpty {
-                    Text(deviceName)
-                        .font(.headline)
-                        .lineLimit(1)
+                if let device {
+                    PanelDeviceSwitcher(device: device, devices: devices, selectDevice: selectDevice)
                 }
                 if let roomTemperature {
                     Label {
@@ -28,6 +32,7 @@ struct PanelHeader: View {
             }
             Spacer(minLength: 8)
             powerButton
+                .disabled(!canTogglePower)
         }
     }
 

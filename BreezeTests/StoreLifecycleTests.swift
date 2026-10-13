@@ -181,7 +181,7 @@ extension StoreTests {
             defer { harness.tearDown() }
 
             await harness.store.start()
-            harness.store.send(.fanSpeed(.low))
+            harness.store.send(.fan(.level(1)))
             await settle()
             #expect(harness.clock.pendingSleeps.count == 2)  // poll + post-burst refresh
 

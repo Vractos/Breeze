@@ -10,6 +10,8 @@ actor FakeThinQAPI: ThinQAPI {
         case profile(String)
         case state(String)
         case control(String, JSONObject)
+        case energyProperties(String)
+        case energyUsage(String, property: String, period: EnergyPeriod, from: DateComponents, to: DateComponents)
     }
 
     struct RecordedCall: Sendable {
@@ -22,10 +24,16 @@ actor FakeThinQAPI: ThinQAPI {
 
     var devices: [DeviceSummary]
     let profile: DeviceProfile
-    let defaultState: DeviceState
+    /// Answered when no state result is queued; `setDefaultState(_:)` changes it.
+    private(set) var defaultState: DeviceState
     private var queuedDevicesResults: [Result<[DeviceSummary], ThinQError>] = []
     private var queuedStateResults: [Result<DeviceState, ThinQError>] = []
+    /// Fixed answers for specific devices, ahead of the queue (other ACs on the account).
+    private var stateResultsByDevice: [String: Result<DeviceState, ThinQError>] = [:]
     private var queuedControlErrors: [ThinQError?] = []
+    /// Energy answers; by default the canned data of the previews (`PreviewEnergy`).
+    private var energyPropertiesResult: Result<[String], ThinQError> = .success(PreviewEnergy.properties)
+    private var energyUsageResults: [EnergyPeriod: Result<[EnergyUsageEntry], ThinQError>] = [:]
 
     private var holdsStateRequests = false
     private var heldStateRequests: [CheckedContinuation<Void, Never>] = []
@@ -42,7 +50,14 @@ actor FakeThinQAPI: ThinQAPI {
     func setDevices(_ devices: [DeviceSummary]) { self.devices = devices }
     func enqueueDevices(_ result: Result<[DeviceSummary], ThinQError>) { queuedDevicesResults.append(result) }
     func enqueueState(_ result: Result<DeviceState, ThinQError>) { queuedStateResults.append(result) }
+    func setDefaultState(_ state: DeviceState) { defaultState = state }
+    func setState(_ result: Result<DeviceState, ThinQError>, forDevice deviceID: String) { stateResultsByDevice[deviceID] = result }
     func enqueueControl(error: ThinQError?) { queuedControlErrors.append(error) }
+    func setEnergyProperties(_ result: Result<[String], ThinQError>) { energyPropertiesResult = result }
+    /// `nil` restores the canned data for `period`.
+    func setEnergyUsage(_ result: Result<[EnergyUsageEntry], ThinQError>?, for period: EnergyPeriod) {
+        energyUsageResults[period] = result
+    }
 
     /// While on, `state()` suspends until `releaseHeldStateRequests()`.
     func holdStateRequests() { holdsStateRequests = true }
@@ -64,6 +79,15 @@ actor FakeThinQAPI: ThinQAPI {
 
     var controlCalls: [RecordedCall] {
         calls.filter { if case .control = $0.call { true } else { false } }
+    }
+
+    var energyCalls: [Call] {
+        calls.map(\.call).filter {
+            switch $0 {
+            case .energyProperties, .energyUsage: true
+            default: false
+            }
+        }
     }
 
     var controlBodies: [JSONObject] {
@@ -90,6 +114,9 @@ actor FakeThinQAPI: ThinQAPI {
         if holdsStateRequests {
             await withCheckedContinuation { heldStateRequests.append($0) }
         }
+        if let fixed = stateResultsByDevice[deviceID] {
+            return try fixed.get()
+        }
         if !queuedStateResults.isEmpty {
             return try queuedStateResults.removeFirst().get()
         }
@@ -101,6 +128,25 @@ actor FakeThinQAPI: ThinQAPI {
         if !queuedControlErrors.isEmpty, let error = queuedControlErrors.removeFirst() {
             throw error
         }
+    }
+
+    func energyProperties(deviceID: String) async throws(ThinQError) -> [String] {
+        record(.energyProperties(deviceID))
+        return try energyPropertiesResult.get()
+    }
+
+    func energyUsage(
+        deviceID: String,
+        property: String,
+        period: EnergyPeriod,
+        from: DateComponents,
+        to: DateComponents
+    ) async throws(ThinQError) -> [EnergyUsageEntry] {
+        record(.energyUsage(deviceID, property: property, period: period, from: from, to: to))
+        if let result = energyUsageResults[period] {
+            return try result.get()
+        }
+        return PreviewEnergy.usage(period: period, from: from, to: to)
     }
 
     private func record(_ call: Call) {

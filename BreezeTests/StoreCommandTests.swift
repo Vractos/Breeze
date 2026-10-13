@@ -24,7 +24,7 @@ extension StoreTests {
             let store = harness.store
 
             await store.start()
-            store.send(.fanSpeed(.low))
+            store.send(.fan(.level(1)))
             store.send(.mode(.airDry))
             store.send(.powerSave(true))
             #expect(store.pendingCommands == 3)
@@ -47,9 +47,9 @@ extension StoreTests {
             defer { harness.tearDown() }
 
             await harness.store.start()
-            harness.store.send(.fanSpeed(.low))
+            harness.store.send(.fan(.level(1)))
             await harness.clock.advance(by: .seconds(1))
-            harness.store.send(.fanSpeed(.mid))
+            harness.store.send(.fan(.level(2)))
             await harness.clock.advance(by: .seconds(10))
 
             let controls = await harness.api.controlCalls
@@ -165,12 +165,12 @@ extension StoreTests {
 
             await store.start()
             await harness.api.enqueueControl(error: .api(code: .commandNotSupportedInMode, message: ""))
-            store.send(.fanSpeed(.low))
-            #expect(store.snapshot?.fanSpeed == .low)
+            store.send(.fan(.level(1)))
+            #expect(store.snapshot?.fan == .level(1))
 
             await harness.clock.advance(by: .seconds(1))
 
-            #expect(store.snapshot?.fanSpeed == .high)
+            #expect(store.snapshot?.fan == .level(3))
             #expect(store.commandFailureMessage != nil)
             #expect(store.phase == .ready)
 
@@ -188,7 +188,7 @@ extension StoreTests {
 
             await harness.store.start()
             await harness.api.enqueueControl(error: .api(code: .invalidToken, message: ""))
-            harness.store.send(.fanSpeed(.low))
+            harness.store.send(.fan(.level(1)))
             harness.store.send(.mode(.airDry))  // queued behind; must be dropped, not POSTed
             await harness.clock.advance(by: .seconds(10))
 
@@ -262,14 +262,14 @@ extension StoreTests {
             let store = harness.store
 
             await store.start()
-            store.send(.fanSpeed(.low))
+            store.send(.fan(.level(1)))
             store.send(.mode(.airDry))  // waits 3 s behind the fan command
 
             // A refresh lands while the mode command is still queued; the remote changed the setpoint.
             await harness.api.enqueueState(.success(try Fixtures.onState(target: 19)))
             await store.refresh()
 
-            #expect(store.snapshot?.fanSpeed == .low)
+            #expect(store.snapshot?.fan == .level(1))
             #expect(store.snapshot?.mode == .airDry)
             #expect(store.snapshot?.targetTemperature?.value == 19)
         }
@@ -321,7 +321,7 @@ extension StoreTests {
             let store = harness.store
 
             await store.start()
-            store.send(.fanSpeed(.low))
+            store.send(.fan(.level(1)))
             await settle()  // POSTed; post-burst refresh pending, so the next fetch is not quiet
 
             // The remote switched the AC off meanwhile.
@@ -367,13 +367,13 @@ extension StoreTests {
 
             await store.start()
             await harness.api.enqueueControl(error: .api(code: .commandNotSupportedInPowerOff, message: ""))
-            store.send(.fanSpeed(.low))
+            store.send(.fan(.level(1)))
             await harness.clock.advance(by: .seconds(1))
 
             #expect(store.snapshot?.power == .off)
             #expect(store.commandFailureMessage != nil)
 
-            store.send(.fanSpeed(.low))
+            store.send(.fan(.level(1)))
             await harness.clock.advance(by: .seconds(10))
             #expect(await harness.api.controlBodies == [
                 ["airFlow": ["windStrength": "LOW"]],
@@ -437,14 +437,14 @@ extension StoreTests {
 
             await store.start()
             await harness.api.enqueueControl(error: .api(code: .retryRequest, message: ""))
-            store.send(.fanSpeed(.low))
+            store.send(.fan(.level(1)))
             await harness.clock.advance(by: .seconds(4))  // before the post-burst refresh
 
             let controls = await harness.api.controlCalls
             #expect(controls.count == 2)
             #expect(Self.gaps(controls) == [3])
             #expect(store.commandFailureMessage == nil)
-            #expect(store.snapshot?.fanSpeed == .low)
+            #expect(store.snapshot?.fan == .level(1))
         }
 
         @Test func aSecondRetryRequestFailsTheCommand() async throws {
@@ -455,12 +455,12 @@ extension StoreTests {
             await store.start()
             await harness.api.enqueueControl(error: .api(code: .retryRequest, message: ""))
             await harness.api.enqueueControl(error: .api(code: .retryRequest, message: ""))
-            store.send(.fanSpeed(.low))
+            store.send(.fan(.level(1)))
             await harness.clock.advance(by: .seconds(3))
 
             #expect(await harness.api.controlCalls.count == 2)
             #expect(store.commandFailureMessage != nil)
-            #expect(store.snapshot?.fanSpeed == .high)
+            #expect(store.snapshot?.fan == .level(3))
         }
     }
 }

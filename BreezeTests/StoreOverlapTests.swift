@@ -20,7 +20,7 @@ extension StoreTests {
 
             // The command POST is rejected with 1103 while the GET is still out.
             await harness.api.enqueueControl(error: .api(code: .invalidToken, message: ""))
-            store.send(.fanSpeed(.low))
+            store.send(.fan(.level(1)))
             await settle()
             #expect(store.phase == .tokenInvalid)
 
@@ -43,7 +43,7 @@ extension StoreTests {
             let store = harness.store
 
             await store.start()
-            store.send(.fanSpeed(.low))
+            store.send(.fan(.level(1)))
             await settle()  // POSTed at t=0; post-burst refresh due at t=4
 
             await harness.api.holdStateRequests()

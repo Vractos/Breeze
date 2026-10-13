@@ -10,7 +10,7 @@ extension ACStore {
         /// applied). The setpoint key depends on the mode, and reading the snapshot at POST time
         /// would pick up mode changes queued *after* this command and write the wrong key.
         let mode: ACMode?
-        /// For `.targetTemperature`: the setpoint it writes, for coalescing.
+        /// For `.targetTemperature` and `.sleepTimer`: the slot it writes, for coalescing.
         let setpointSlot: SetpointSlot?
     }
 }

@@ -11,6 +11,9 @@ final class StoreHarness {
     let defaults: UserDefaults
     let settings: AppSettings
     let store: ACStore
+    /// The store's calendar: São Paulo unless a test passes one, so day and month boundaries
+    /// don't depend on the Mac running the tests.
+    let calendar: Calendar
     /// Every configuration the store built a client with.
     var configurations: [ThinQConfiguration] { recorder.configurations }
     private let recorder = ConfigurationRecorder()
@@ -22,6 +25,7 @@ final class StoreHarness {
         devices: [DeviceSummary] = [Fixtures.livingRoomAC],
         state: DeviceState? = nil,
         profile: DeviceProfile? = nil,
+        calendar: Calendar = StoreHarness.saoPaulo,
         configure: (AppSettings) -> Void = { _ in }
     ) throws {
         suiteName = "BreezeTests.\(UUID().uuidString)"
@@ -29,6 +33,7 @@ final class StoreHarness {
             throw Fixtures.MissingFixture(name: suiteName)
         }
         self.defaults = defaults
+        self.calendar = calendar
         settings = AppSettings(defaults: defaults)
         configure(settings)
         tokenStore = InMemoryTokenStore(token: token)
@@ -43,9 +48,16 @@ final class StoreHarness {
             },
             tokenStore: tokenStore,
             settings: settings,
-            clock: clock
+            clock: clock,
+            calendar: calendar
         )
     }
+
+    static let saoPaulo: Calendar = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "America/Sao_Paulo") ?? .gmt
+        return calendar
+    }()
 
     /// Stops the store's loops and removes the defaults domain.
     func tearDown() {
